@@ -1,4 +1,4 @@
-import { Player1, Player2, Spell } from "./wwclasses";
+import { Player1, Player2, Spell } from './wwclasses.js';
 
 function counterSpellEffectivness(spell, counter_spell_attempt) {
     const spellName = spell.toLowerCase();
@@ -6,7 +6,7 @@ function counterSpellEffectivness(spell, counter_spell_attempt) {
     let correctChars = 0;
     
     for (let i = 0; i < spellLength; i++) {
-        if (spellName[i] === counter_spell_attempt[i].toLowerCase()) {
+        if (counter_spell_attempt[i] && spellName[i] === counter_spell_attempt[i].toLowerCase()) {
             correctChars++;
         }
     }
