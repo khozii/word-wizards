@@ -1,11 +1,75 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Word Wizards</title>
+
+    <!-- Optional: link your CSS file -->
     <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
+
+    <!-- Optional: favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+    <!-- inline styles moved to style.css -->
+</head>
+
+<body>
+    <header>
+        
+        <h1>Word Wizards</h1>
+    </header>
+
+    <main>
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h2>Welcome to Word Wizards!</h2>
+            <button id="start-button">Start Game</button>
+            <button id="options-button">Options</button>
+            
+        </div>
+
+        <!-- Game Container (hidden initially) -->
+        <div id="game-container" style="display: none;">
+            <div id="turn-indicator">Current Turn: <strong id="current-player">Player 1</strong></div>
+
+            <div id="players">
+                <div class="player" id="player-1">
+                    <h3>Player 1</h3>
+                    <p>HP: <span class="hp">100</span></p>
+                    <p>Mana: <span class="mana">50</span></p>
+                    <div class="actions">
+                        <button class="selection-btn" data-action="choose">Choose Spell</button>
+                        <button class="action-btn" data-action="spell">Cast Spell</button>
+                    </div>
+                </div>
+
+                <div class="player" id="player-2">
+                    <h3>Player 2</h3>
+                    <p>HP: <span class="hp">100</span></p>
+                    <p>Mana: <span class="mana">50</span></p>
+                    <div class="actions">
+                        <button class="selection-btn" data-action="choose">Choose Spell</button>
+                        <button class="action-btn" data-action="spell">Cast Spell</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="controls">
+                <button id="end-turn-button">End Turn</button>
+            </div>
+
+            <div id="log" aria-live="polite" style="margin-top:12px; max-height:120px; overflow:auto; border-top:1px solid #ddd; padding-top:8px;"></div>
+        </div>
+
+        <!-- New: Options Screen (hidden initially) -->
+        <div id="options-screen" style="display: none;">
+            <p>Options menu</p>
+        </div>
+    </main>
+
+    <!-- changed to load the JS as a module so imports work -->
+    <script type="module" src="wordwizards.js"></script>
     <h1>Word Wizards</h1>
     <p>If you see this, the site is running ✅</p>
 
@@ -14,5 +78,5 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
-  </body>
+</body>
 </html>
