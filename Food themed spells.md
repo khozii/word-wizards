@@ -22,5 +22,5 @@ Low tier: (no cooldown, damage range goes here)
  + Fries of fury (attack)
  + Spicebomb (attack)
  + Frosting fix (heal)
-
  + Gumdrop glow (heal)
+
