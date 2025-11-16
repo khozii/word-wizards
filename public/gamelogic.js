@@ -195,31 +195,33 @@ function processCounterSpell(defender, spell, counterAttempt) {
     // Calculate counter damage reduction
     const correctCounterChars = counterSpellEffectivness(spell.name, counterAttempt);
     const damageReductionPercent = (correctCounterChars / spell.name.length) * 100;
-    const finalDamage = Math.round((spell.damage * (1 - (damageReductionPercent / 100))) * 10) / 10;
+    const finalDamage = Math.round(spell.damage * (1 - (damageReductionPercent / 100)));
     
     // Apply damage to shield first, then overflow to health
     const shieldBefore = defender.shield;
     let damageToHealth = 0;
     if (finalDamage > defender.shield) {
-        damageToHealth = Math.round((finalDamage - defender.shield) * 10) / 10;
+        damageToHealth = finalDamage - defender.shield;
         defender.shield = 0;
     } else {
         defender.shield -= finalDamage;
     }
-    defender.health -= damageToHealth;
     
-    const damageToShield = Math.round(Math.min(finalDamage, shieldBefore) * 10) / 10;
+    // Round health to whole numbers to avoid floating point precision issues
+    defender.health = Math.round(defender.health - damageToHealth);
+    
+    const damageToShield = Math.min(finalDamage, shieldBefore);
     
     return {
         correctChars: correctCounterChars,
         spellLength: spell.name.length,
-        damageReductionPercent: damageReductionPercent,
+        damageReductionPercent: Math.round(damageReductionPercent * 10) / 10, // Keep one decimal for percentage display
         baseDamage: spell.damage,
         finalDamage: finalDamage,
         damageToShield: damageToShield,
         damageToHealth: damageToHealth,
-        defenderShieldRemaining: Math.max(0, defender.shield),
-        defenderHealthRemaining: Math.max(0, defender.health)
+        defenderShieldRemaining: Math.round(Math.max(0, defender.shield)),
+        defenderHealthRemaining: Math.round(Math.max(0, defender.health))
     };
 }
 
