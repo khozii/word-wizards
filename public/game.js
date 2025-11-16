@@ -82,6 +82,77 @@ function updateUI() {
   endTurnButton.disabled = !isMyTurn;
 }
 
+// CHANGED: Show typing textbox when a player clicks "Cast Spell" so they can see what they type.
+// - Creates an input positioned on the left side under the active player
+// - Styled to match the game theme (purple/teal gradient, rounded corners)
+// - Submits on Enter (emits `end-turn` with action)
+// - Only available when it's the local player's turn
+function showTypingInput() {
+  // If an input already exists, focus it
+  let wrap = document.getElementById('typing-input-wrap');
+  if (wrap) {
+    const existing = document.getElementById('typing-input');
+    if (existing) existing.focus();
+    return;
+  }
+
+  wrap = document.createElement('div');
+  wrap.id = 'typing-input-wrap';
+  wrap.className = 'typing-input-container';
+
+  const label = document.createElement('label');
+  label.textContent = 'Cast spell:';
+  label.className = 'typing-label';
+  
+  const input = document.createElement('input');
+  input.id = 'typing-input';
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.placeholder = 'Type spell name...';
+  input.className = 'typing-input-field';
+
+  // Submit on Enter, cancel on Escape
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      submitTypedSpell(input.value.trim());
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      wrap.remove();
+    }
+  });
+
+  label.appendChild(input);
+  wrap.appendChild(label);
+  document.body.appendChild(wrap);
+  input.focus();
+}
+
+function submitTypedSpell(spellName) {
+  const wrap = document.getElementById('typing-input-wrap');
+  if (!currentState || !roomId || currentState.turn !== myId) {
+    if (wrap) wrap.remove();
+    return;
+  }
+
+  if (!spellName) {
+    // don't send empty actions; just remove input
+    if (wrap) wrap.remove();
+    return;
+  }
+
+  // For now, emit the same `end-turn` action payload used elsewhere.
+  const action = {
+    spellName: spellName,
+    damage: 10
+  };
+
+  socket.emit('end-turn', { roomId, action });
+
+  // remove input after submit
+  if (wrap) wrap.remove();
+}
+
 // Handle End Turn: send action to server
 endTurnButton.addEventListener("click", () => {
   if (!roomId || !currentState || currentState.turn !== myId) return;
@@ -94,4 +165,18 @@ endTurnButton.addEventListener("click", () => {
   };
 
   socket.emit("end-turn", { roomId, action });
+});
+
+// CHANGED: Show typing input when player clicks the Cast Spell button in the UI
+document.getElementById('players')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const panel = btn.closest('.player');
+  if (!panel) return;
+  const action = btn.dataset.action;
+  if (action === 'spell') {
+    // only allow when it's our turn
+    if (!currentState || currentState.turn !== myId) return;
+    showTypingInput();
+  }
 });
