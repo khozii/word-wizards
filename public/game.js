@@ -1,5 +1,10 @@
+import { foodSpells } from './wwfoodspell.js';
+
+// Wait for DOM to be ready before accessing elements
+document.addEventListener('DOMContentLoaded', () => {
+
 // ----- Socket.IO connection -----
-const socket = io();
+const socket = window.io();
 
 let roomId = null;
 let currentState = null; // { players: { id: { hp } }, playerOrder: [id1,id2], turn, lastAction }
@@ -7,6 +12,7 @@ let myId = null;
 let myPlayerIndex = null; // 0 => player1, 1 => player2
 let prevIsMyTurn = null;
 let playerOrder = null; // cached ordered player ids from server
+let selectedSpell = null; // tracks the spell chosen from the menu
 
 // DOM refs
 const startScreen = document.getElementById("start-screen");
@@ -42,6 +48,13 @@ startButton.addEventListener("click", () => {
   socket.emit("find-match");
   if (statusEl) statusEl.textContent = "Searching for an opponent...";
   startButton.disabled = true;
+});
+
+// Wire up Choose Spell buttons
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('selection-btn') && e.target.dataset.action === 'choose') {
+    showSpellMenu();
+  }
 });
 
 // Server says you're in queue
@@ -186,3 +199,107 @@ function flashTurnOverlay(isMyTurn) {
   // update the image in case opponent changed (no auto-hide)
   // (we already set overlayImgEl.src above)
 }
+
+// Show spell selection menu
+function showSpellMenu() {
+  // Only allow during player's turn
+  if (!currentState || currentState.turn !== myId) return;
+
+  // Remove existing menu if present
+  const existing = document.getElementById('spell-menu');
+  if (existing) existing.remove();
+
+  // Create menu container
+  const menu = document.createElement('div');
+  menu.id = 'spell-menu';
+  menu.className = 'spell-menu-container';
+
+  // Menu header
+  const header = document.createElement('h3');
+  header.className = 'spell-menu-header';
+  header.textContent = 'Choose Your Spell';
+  menu.appendChild(header);
+
+  // Group spells by type
+  const attackSpells = [];
+  const healSpells = [];
+  
+  Object.values(foodSpells).forEach(spell => {
+    if (spell.type === 'attack') {
+      attackSpells.push(spell);
+    } else if (spell.type === 'heal') {
+      healSpells.push(spell);
+    }
+  });
+
+  // Attack section
+  if (attackSpells.length > 0) {
+    const attackSection = document.createElement('div');
+    attackSection.className = 'spell-section';
+    
+    const attackHeader = document.createElement('h4');
+    attackHeader.className = 'spell-section-header';
+    attackHeader.textContent = 'Attack Spells';
+    attackSection.appendChild(attackHeader);
+    
+    attackSpells.forEach(spell => {
+      attackSection.appendChild(createSpellButton(spell));
+    });
+    
+    menu.appendChild(attackSection);
+  }
+
+  // Heal section
+  if (healSpells.length > 0) {
+    const healSection = document.createElement('div');
+    healSection.className = 'spell-section';
+    
+    const healHeader = document.createElement('h4');
+    healHeader.className = 'spell-section-header';
+    healHeader.textContent = 'Heal Spells';
+    healSection.appendChild(healHeader);
+    
+    healSpells.forEach(spell => {
+      healSection.appendChild(createSpellButton(spell));
+    });
+    
+    menu.appendChild(healSection);
+  }
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'spell-menu-close';
+  closeBtn.textContent = 'Close';
+  closeBtn.addEventListener('click', () => menu.remove());
+  menu.appendChild(closeBtn);
+
+  document.body.appendChild(menu);
+}
+
+// Create individual spell button
+function createSpellButton(spell) {
+  const button = document.createElement('button');
+  button.className = 'spell-item';
+  
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'spell-name';
+  nameDiv.textContent = spell.name;
+  
+  const statsDiv = document.createElement('div');
+  statsDiv.className = 'spell-stats';
+  const damageOrHeal = spell.type === 'attack' ? 'Damage' : 'Heal';
+  statsDiv.textContent = `${damageOrHeal}: ${spell.damage} | Mana: ${spell.mana}`;
+  
+  button.appendChild(nameDiv);
+  button.appendChild(statsDiv);
+  
+  button.addEventListener('click', () => {
+    selectedSpell = spell;
+    document.getElementById('spell-menu').remove();
+    console.log('Selected spell:', spell.name);
+  });
+  
+  return button;
+}
+
+}); // End DOMContentLoaded
