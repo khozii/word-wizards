@@ -32,3 +32,5 @@ const foodSpells = {
   "Gravy fueled recovery": new Spell("Gravy fueled recovery", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal"),
   "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal")
 };
+
+export { foodSpells };
