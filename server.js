@@ -116,6 +116,19 @@ function processCounterPhase(roomId, counterAttempt, spellData) {
   
   console.log(`Counter result: ${counterResult.correctChars}/${counterResult.spellLength} chars correct, ${counterResult.damageReductionPercent}% reduction`);
   
+  // Check for perfect counter (100% damage reduction) and reward mana
+  let manaReward = 0;
+  if (counterResult.damageReductionPercent >= 100) {
+    const MANA_REGEN_PER_TURN = 15; // Match gamelogic.js constant
+    const MANA_CAP = 50; // Match gamelogic.js constant
+    
+    const oldMana = defender.mana;
+    defender.mana = Math.min(defender.mana + MANA_REGEN_PER_TURN, MANA_CAP);
+    manaReward = defender.mana - oldMana;
+    
+    console.log(`Perfect counter! ${spellData.defenderId} gained ${manaReward} mana (${oldMana} -> ${defender.mana})`);
+  }
+  
   // Apply the calculated health from gamelogic
   defender.hp = Math.max(0, mockDefender.health);
   console.log(`${spellData.defenderId} took ${counterResult.finalDamage} damage after counter, HP: ${defender.hp}`);
@@ -144,7 +157,8 @@ function processCounterPhase(roomId, counterAttempt, spellData) {
     attackerId: spellData.attackerId,
     defenderId: spellData.defenderId,
     spellName: spellData.spell.name,
-    counterAttempt: counterAttempt
+    counterAttempt: counterAttempt,
+    manaReward: manaReward
   };
   
   io.to(roomId).emit("counter-phase-end", endResult);

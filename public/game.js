@@ -1106,18 +1106,27 @@ function showCounterResult(result) {
   
   const damageReduction = Math.round(result.damageReductionPercent || 0);
   const finalDamage = Math.round(result.finalDamage || 0);
+  const manaReward = result.manaReward || 0;
+  const isPerfectCounter = damageReduction >= 100;
   
   let message;
   if (result.defenderId === myId) {
     // I was defending
-    if (damageReduction > 0) {
+    if (isPerfectCounter) {
+      message = `PERFECT COUNTER! 100% blocked!`;
+      if (manaReward > 0) {
+        message += ` +${manaReward} mana bonus!`;
+      }
+    } else if (damageReduction > 0) {
       message = `Counter: ${damageReduction}% damage blocked! Took ${finalDamage} damage.`;
     } else {
       message = `Counter failed! Took full ${finalDamage} damage.`;
     }
   } else {
     // I was attacking
-    if (damageReduction > 0) {
+    if (isPerfectCounter) {
+      message = `Opponent PERFECT COUNTER! 100% blocked!`;
+    } else if (damageReduction > 0) {
       message = `Opponent countered ${damageReduction}%! Dealt ${finalDamage} damage.`;
     } else {
       message = `Counter failed! Dealt full ${finalDamage} damage.`;
@@ -1125,7 +1134,19 @@ function showCounterResult(result) {
   }
   
   messageEl.textContent = message;
-  messageEl.style.background = damageReduction > 0 ? 'linear-gradient(135deg, #ff9800, #f57c00)' : 'linear-gradient(135deg, #f44336, #d32f2f)';
+  
+  // Set background color based on counter quality
+  if (isPerfectCounter) {
+    // Gold gradient for perfect counters
+    messageEl.style.background = 'linear-gradient(135deg, #FFD700, #FFA500)';
+  } else if (damageReduction > 0) {
+    // Orange gradient for partial counters
+    messageEl.style.background = 'linear-gradient(135deg, #ff9800, #f57c00)';
+  } else {
+    // Red gradient for failed counters
+    messageEl.style.background = 'linear-gradient(135deg, #f44336, #d32f2f)';
+  }
+  
   messageEl.style.animation = 'none';
   messageEl.style.display = 'block';
   
@@ -1133,12 +1154,13 @@ function showCounterResult(result) {
   messageEl.offsetHeight;
   messageEl.style.animation = 'manaRegenPulse 1s ease-in-out';
   
-  // Hide after 2 seconds (longer for counter results)
+  // Hide after 2.5 seconds (longer for perfect counters to appreciate the achievement)
+  const displayTime = isPerfectCounter ? 2500 : 2000;
   setTimeout(() => {
     messageEl.style.display = 'none';
     messageEl.style.animation = 'none';
     messageEl.style.background = 'linear-gradient(135deg, #9C27B0, #673AB7)'; // Reset to purple mana regen colors
-  }, 2000);
+  }, displayTime);
 }
 
 }); // End DOMContentLoaded
