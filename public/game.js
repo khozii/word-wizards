@@ -218,6 +218,9 @@ function updateUI() {
   currentPlayerEl.textContent = isMyTurn ? "You" : "Opponent";
   endTurnButton.disabled = !isMyTurn;
 
+  // Enable/disable player buttons based on turn and player identity
+  updatePlayerButtons(isMyTurn);
+
   console.log(`HP Update: P1(${p1Id})=${p1Hp}, P2(${p2Id})=${p2Hp}, MyId=${myId}, TurnHolder=${currentState.turn}`);
 
   // flash overlay when turn changes (show opponent avatar)
@@ -257,6 +260,27 @@ function flashTurnOverlay(isMyTurn) {
   overlayEl.setAttribute('aria-hidden', 'false');
   // update the image in case opponent changed (no auto-hide)
   // (we already set overlayImgEl.src above)
+}
+
+// Enable/disable player buttons based on turn and player identity
+function updatePlayerButtons(isMyTurn) {
+  if (myPlayerIndex === null) return;
+
+  // Get all buttons in both player panels
+  const p1Buttons = document.querySelectorAll('#player-1 .selection-btn, #player-1 .action-btn');
+  const p2Buttons = document.querySelectorAll('#player-2 .selection-btn, #player-2 .action-btn');
+
+  if (myPlayerIndex === 0) {
+    // I am Player 1
+    // Enable my buttons only on my turn, disable opponent buttons always
+    p1Buttons.forEach(btn => btn.disabled = !isMyTurn);
+    p2Buttons.forEach(btn => btn.disabled = true);
+  } else if (myPlayerIndex === 1) {
+    // I am Player 2
+    // Enable my buttons only on my turn, disable opponent buttons always
+    p2Buttons.forEach(btn => btn.disabled = !isMyTurn);
+    p1Buttons.forEach(btn => btn.disabled = true);
+  }
 }
 
 // Show spell selection menu
