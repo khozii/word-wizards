@@ -7,12 +7,29 @@ body {
     background-repeat: no-repeat;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
+
 header {
-    background: #4a148c;
+    background: #b4900e;
     color: white;
     padding: 1rem;
+}
+
+footer {
+    background: #8c6814;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+    margin-top: auto;
+}
+
+footer p {
+    margin: 0;
 }
 
 h1 {
@@ -78,6 +95,19 @@ h1 {
 
 .player h3 { margin-top: 0; margin-bottom: 8px; }
 
+/* small avatar inside player panels */
+.player .avatar {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.95);
+  padding: 4px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
 /* Actions: align buttons toward the player's side */
 .actions { display: flex; gap: 8px; justify-content: flex-start; }
 #player-2 .actions { justify-content: flex-end; }
@@ -120,21 +150,43 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 #player-1, #player-2 {
   position: absolute;
-  left: 12px;
   width: 240px;
   box-sizing: border-box;
 }
 
-/* player 2 at the top-left */
-#player-2 { top: 12px; text-align: left; }
+/* player 2 at the top-right */
+#player-2 { top: 12px; right: 12px; left: auto; text-align: right; }
 
 /* player 1 at the bottom-left */
-#player-1 { bottom: 12px; text-align: left; }
+#player-1 { bottom: 12px; left: 12px; text-align: left; }
 
 /* adjust action alignment inside the narrower panels */
 #player-1 .actions, #player-2 .actions {
   justify-content: flex-start;
   gap: 6px;
+}
+
+/* highlight the player's own panel with yellow */
+.player.you-are {
+  background: #fffacd;
+  border-color: #ffd700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+/* highlight opponent panel with red */
+.player.opponent {
+  background: #ffe4e1;
+  border-color: #ff6347;
+  box-shadow: 0 0 12px rgba(255, 99, 71, 0.5);
+}
+
+/* style the you-are label with yellow background */
+#you-are {
+  background: #fffacd;
+  border: 2px solid #ffd700;
+  padding: 6px 12px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 /* responsive: fallback to normal stacking on small screens */
