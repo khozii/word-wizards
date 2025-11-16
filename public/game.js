@@ -55,6 +55,19 @@ document.addEventListener('click', (e) => {
   if (e.target.classList.contains('selection-btn') && e.target.dataset.action === 'choose') {
     showSpellMenu();
   }
+  
+  // Handle Cast Spell button
+  if (e.target.classList.contains('action-btn') && e.target.dataset.action === 'spell') {
+    if (!currentState || currentState.turn !== myId) {
+      console.log('Not your turn!');
+      return;
+    }
+    if (!selectedSpell) {
+      alert('Please choose a spell first!');
+      return;
+    }
+    showTypingInput();
+  }
 });
 
 // Server says you're in queue
@@ -296,10 +309,138 @@ function createSpellButton(spell) {
   button.addEventListener('click', () => {
     selectedSpell = spell;
     document.getElementById('spell-menu').remove();
+    updateSpellQueue();
     console.log('Selected spell:', spell.name);
   });
   
   return button;
+}
+
+// Update spell queue display
+function updateSpellQueue() {
+  const queueEl = document.getElementById('spell-queue');
+  const nameEl = document.getElementById('queued-spell-name');
+  const statsEl = document.getElementById('queued-spell-stats');
+  
+  if (!queueEl || !nameEl || !statsEl) return;
+  
+  if (selectedSpell) {
+    queueEl.style.display = 'block';
+    nameEl.textContent = selectedSpell.name;
+    const damageOrHeal = selectedSpell.type === 'attack' ? 'Damage' : 'Heal';
+    statsEl.textContent = `${damageOrHeal}: ${selectedSpell.damage} | Mana: ${selectedSpell.mana} | Click "Cast Spell" to launch it!`;
+  } else {
+    queueEl.style.display = 'none';
+    nameEl.textContent = 'None';
+    statsEl.textContent = 'Click "Cast Spell" to launch it!';
+  }
+}
+
+// Show typing input for spell casting
+function showTypingInput() {
+  // Remove existing input if present
+  const existing = document.getElementById('typing-input-container');
+  if (existing) existing.remove();
+  
+  // Create typing container
+  const container = document.createElement('div');
+  container.id = 'typing-input-container';
+  container.className = 'typing-input-container';
+  
+  const label = document.createElement('label');
+  label.textContent = `Type "${selectedSpell.name}" to cast:`;
+  label.className = 'typing-label';
+  
+  const input = document.createElement('input');
+  input.id = 'typing-input';
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.placeholder = 'Type the spell name exactly...';
+  input.className = 'typing-input-field';
+  
+  // Timer display
+  const timer = document.createElement('div');
+  timer.id = 'typing-timer';
+  timer.className = 'typing-timer';
+  timer.textContent = '3';
+  
+  // Submit on Enter, cancel on Escape
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      submitTypedSpell(input.value.trim());
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      container.remove();
+    }
+  });
+  
+  container.appendChild(label);
+  container.appendChild(input);
+  container.appendChild(timer);
+  document.body.appendChild(container);
+  input.focus();
+  
+  // Start 3-second countdown
+  let timeLeft = 3;
+  const countdown = setInterval(() => {
+    timeLeft--;
+    timer.textContent = timeLeft;
+    
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+      container.remove();
+      console.log('Time up! Spell failed.');
+    }
+  }, 1000);
+  
+  // Store countdown so we can clear it if spell is cast
+  container.dataset.countdown = countdown;
+}
+
+// Submit typed spell and validate
+function submitTypedSpell(typedName) {
+  const container = document.getElementById('typing-input-container');
+  if (!container) return;
+  
+  // Clear countdown
+  const countdown = container.dataset.countdown;
+  if (countdown) clearInterval(countdown);
+  
+  // Remove input
+  container.remove();
+  
+  if (!currentState || !roomId || currentState.turn !== myId || !selectedSpell) {
+    console.log('Invalid spell cast attempt');
+    return;
+  }
+  
+  // Validate spell name (case-insensitive exact match)
+  const isCorrect = typedName.toLowerCase() === selectedSpell.name.toLowerCase();
+  
+  if (isCorrect) {
+    console.log('Spell cast successfully!', selectedSpell.name);
+    
+    // Create action payload
+    const action = {
+      type: 'spell-cast',
+      spellName: selectedSpell.name,
+      damage: selectedSpell.damage,
+      spellType: selectedSpell.type,
+      mana: selectedSpell.mana
+    };
+    
+    // Send to server
+    socket.emit('end-turn', { roomId, action });
+    
+    // Clear selected spell and update queue
+    selectedSpell = null;
+    updateSpellQueue();
+    
+  } else {
+    console.log(`Spell failed! Typed "${typedName}" but needed "${selectedSpell.name}"`);
+    // Could add failure feedback here
+  }
 }
 
 }); // End DOMContentLoaded
