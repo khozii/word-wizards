@@ -247,6 +247,26 @@ socket.on("state-update", (state) => {
       showHealingMessage(spellName, casterPlayerId, isMe);
     }
   }
+  
+  // Check for spell failures (immediate notification)
+  if (state.lastAction && state.lastAction.action.type === 'spell-failed') {
+    const spellName = state.lastAction.action.spellName;
+    const failureReason = state.lastAction.action.reason;
+    const casterPlayerId = state.lastAction.from;
+    const isMe = casterPlayerId === myId;
+    
+    // Only show if this is a new action (not a repeat from previous state)
+    const isNewAction = !previousState || 
+      !previousState.lastAction || 
+      previousState.lastAction.from !== state.lastAction.from ||
+      previousState.lastAction.action.spellName !== state.lastAction.action.spellName ||
+      previousState.lastAction.action.type !== 'spell-failed';
+    
+    if (isNewAction) {
+      console.log(`Spell failed: ${spellName} by ${casterPlayerId}, reason: ${failureReason}`);
+      showSpellFailureMessage(spellName, failureReason, casterPlayerId, isMe);
+    }
+  }
 
   previousState = currentState;
   currentState = state;
@@ -845,6 +865,53 @@ function showHealingMessage(spellName, casterPlayerId, isMe) {
     messageEl.style.animation = 'none';
     console.log('Healing message hidden');
   }, 1000);
+}
+
+// Show spell failure message immediately when spell fails (red/orange)
+function showSpellFailureMessage(spellName, failureReason, casterPlayerId, isMe) {
+  console.log('showSpellFailureMessage called with:', { spellName, failureReason, casterPlayerId, isMe });
+  
+  const messageEl = document.getElementById('spell-failure-message');
+  console.log('Spell failure message element found:', !!messageEl);
+  
+  if (!messageEl) {
+    console.error('Spell failure message element not found!');
+    return;
+  }
+  
+  // Set message based on who cast it and the failure reason
+  let message;
+  if (isMe) {
+    if (failureReason === 'Spell mispelled') {
+      message = ` ${spellName} Failed! Incantation Mispelled!`;
+    } else {
+      message = `Failed to cast ${spellName}!`;
+    }
+  } else {
+    // Determine which player number the caster is
+    const casterPlayerIndex = playerOrder.indexOf(casterPlayerId);
+    const playerNumber = casterPlayerIndex + 1; // Convert 0/1 to 1/2
+    message = `Player ${playerNumber} failed to cast ${spellName}!`;
+  }
+  
+  messageEl.textContent = message;
+  
+  // Reset animation by removing and re-adding the animation style
+  messageEl.style.animation = 'none';
+  messageEl.style.display = 'block';
+  
+  // Force reflow and then add animation
+  messageEl.offsetHeight; 
+  messageEl.style.animation = 'manaRegenPulse 1.5s ease-in-out';
+  
+  console.log('Spell failure message displayed with animation');
+  
+  // Hide after 1.5 seconds (slightly longer for failure messages)
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+    messageEl.style.animation = 'none';
+    console.log('Spell failure message hidden');
+  }, 1500);
 }
 
 // Show counter input for defender
