@@ -42,6 +42,10 @@ const p1AvatarEl = document.getElementById('player-1-avatar');
 const p2AvatarEl = document.getElementById('player-2-avatar');
 const overlayEl = document.getElementById('turn-overlay');
 const overlayImgEl = document.getElementById('turn-overlay-img');
+const gameOverScreen = document.getElementById('game-over-screen');
+const gameOverTitle = document.getElementById('game-over-title');
+const gameOverDetail = document.getElementById('game-over-detail');
+const returnToMenuButton = document.getElementById('return-to-menu-button');
 
 // When connected to Socket.IO
 socket.on("connect", () => {
@@ -231,9 +235,17 @@ socket.on("state-update", (state) => {
   updateUI();
 });
 
+// Game over event
+socket.on('game-over', ({ winnerId, state }) => {
+  currentState = state;
+  console.log('Game over received. Winner:', winnerId);
+  showGameOver(winnerId);
+});
+
 // Update the HP display + whose turn
 function updateUI() {
   if (!currentState || !myId || !playerOrder) return;
+  if (currentState.gameOver) return; // game-over handler manages end state UI
 
   const players = currentState.players;
   const p1Id = playerOrder[0];
@@ -321,6 +333,55 @@ function updatePlayerButtons(isMyTurn) {
     // Enable my buttons only on my turn, disable opponent buttons always
     p2Buttons.forEach(btn => btn.disabled = !isMyTurn);
     p1Buttons.forEach(btn => btn.disabled = true);
+  }
+}
+
+// Display win/lose screen
+function showGameOver(winnerId) {
+  // Disable all interactive buttons
+  document.querySelectorAll('button').forEach(b => b.disabled = true);
+
+  const iWon = winnerId === myId;
+  if (gameOverTitle) {
+    gameOverTitle.textContent = iWon ? 'You Win!' : 'You Lose!';
+  }
+  if (gameOverDetail) {
+    const p1Id = playerOrder ? playerOrder[0] : 'P1';
+    const p2Id = playerOrder ? playerOrder[1] : 'P2';
+    const myLabel = (myPlayerIndex === 0) ? 'Player 1' : 'Player 2';
+    const winnerLabel = (winnerId === p1Id) ? 'Player 1' : 'Player 2';
+    gameOverDetail.textContent = iWon
+      ? `Well played ${myLabel}! You reduced your opponent to 0 HP.`
+      : `Better luck next time ${myLabel}. ${winnerLabel} won this duel.`;
+  }
+
+  if (gameOverScreen) gameOverScreen.style.display = 'flex';
+
+  if (returnToMenuButton) {
+    returnToMenuButton.disabled = false;
+    returnToMenuButton.addEventListener('click', () => {
+      // Return to start screen
+      gameOverScreen.style.display = 'none';
+      gameContainer.style.display = 'none';
+      startScreen.style.display = 'block';
+      document.body.style.backgroundImage = '';
+      document.body.style.backgroundSize = '';
+      document.body.style.backgroundPosition = '';
+      
+      // Reset game state
+      roomId = null;
+      currentState = null;
+      myPlayerIndex = null;
+      playerOrder = null;
+      selectedSpell = null;
+      prevIsMyTurn = null;
+      
+      // Re-enable start button
+      startButton.disabled = false;
+      
+      // Reset status
+      if (statusEl) statusEl.textContent = "Connected (not in match)";
+    }, { once: true });
   }
 }
 

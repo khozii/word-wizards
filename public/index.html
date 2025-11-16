@@ -26,7 +26,6 @@
         <div id="start-screen">
             <h2>Welcome to Word Wizards!</h2>
             <button id="start-button">Start Game</button>
-            <button id="options-button">Options</button>
             <p id="status" style="margin-top: 1rem; font-weight: bold; color: #6a1b9a;"></p>
             
         </div>
@@ -83,10 +82,15 @@
             <div id="mana-regen-message" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:linear-gradient(135deg, #4CAF50, #8BC34A); color:white; padding:15px 25px; border-radius:8px; font-size:18px; font-weight:bold; z-index:2000; box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
         </div>
 
-        <!-- New: Options Screen (hidden initially) -->
-        <div id="options-screen" style="display: none;">
-            <p>Options menu</p>
-        </div>
+        <!-- Game Over Screen (hidden until win/lose) -->
+        <div id="game-over-screen" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:4000; align-items:center; justify-content:center;">
+          <div style="background:#fff; border-radius:12px; padding:40px; text-align:center; max-width:400px; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <h2 id="game-over-title" style="color:#6a1b9a; font-size:2rem; margin-bottom:1rem;"></h2>
+            <p id="game-over-detail" style="color:#333; font-size:1rem; line-height:1.4; margin-bottom:2rem;"></p>
+            <button id="return-to-menu-button" style="background:#6a1b9a; color:#fff; padding:12px 24px; font-size:1rem; border:none; border-radius:6px; cursor:pointer;">Return to Menu</button>
+          </div>
+        </div>                </div>
+    </main>
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
