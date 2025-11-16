@@ -2,6 +2,8 @@ import { foodSpells } from './wwfoodspell.js';
 import { 
   ATTACK_TIME_LIMIT, 
   COUNTER_TIME_LIMIT, 
+  getAttackTimeLimit,
+  getCounterTimeLimit,
   attemptCastSpell,
   castPlayerSpell,
   MANA_REGEN_PER_TURN,
@@ -9,6 +11,27 @@ import {
   counterSpellEffectivness,
   processCounterSpell
 } from './gamelogic.js';
+
+// Get spell tier from spell name
+function getSpellTier(spellName) {
+  const spell = foodSpells[spellName];
+  return spell ? spell.tier : 2; // Default to medium tier if spell not found
+}
+
+// Play sound effect for special spells
+function playSpellSoundEffect(spellName) {
+  if (spellName === "Dubious Durian") {
+    try {
+      const audio = new Audio('images/vine-boom-sound-effect(chosic.com).mp3');
+      audio.volume = 0.5; // Set volume to 50%
+      audio.play().catch(error => {
+        console.warn('Could not play Dubious Durian sound effect:', error);
+      });
+    } catch (error) {
+      console.warn('Error creating audio for Dubious Durian:', error);
+    }
+  }
+}
 
 // Map spell names to their corresponding image filenames
 function getSpellImageFilename(spellName) {
@@ -24,6 +47,7 @@ function getSpellImageFilename(spellName) {
     "Banana peel barrage": "BananaPeelBarrage.png",
     "Molten marshmallow mayhem": "Molten marshmallow mayhem.png",
     "Ghost pepper blast": "GhostPepperBlast.png",
+    "Dubious Durian": "dubiousdurian.png",
     // Healing spells
     "Frosting fix": "FrostingFix.png",
     "Gumdrop glow": "GumdropGlow.png",
@@ -625,8 +649,13 @@ function createSpellButton(spell) {
   const statsDiv = document.createElement('div');
   statsDiv.className = 'spell-stats';
   const damageOrHeal = spell.type === 'attack' ? 'Damage' : 'Heal';
-  let statsText = `${damageOrHeal}: ${spell.damage} | Mana: ${spell.mana}`;
-  
+  let statsText;
+  if (spell.name == "Dubious Durian") {
+    statsText = `${damageOrHeal}: ${"???"} | Mana: ${spell.mana}`;
+  } else {
+    statsText = `${damageOrHeal}: ${spell.damage} | Mana: ${spell.mana}`;
+  }
+
   // Add "Not enough mana!" if player can't afford it
   if (!hasEnoughMana) {
     statsText += ' | Not enough mana!';
@@ -668,7 +697,11 @@ function updateSpellQueue() {
     queueEl.style.display = 'block';
     nameEl.textContent = selectedSpell.name;
     const damageOrHeal = selectedSpell.type === 'attack' ? 'Damage' : 'Heal';
-    statsEl.textContent = `${damageOrHeal}: ${selectedSpell.damage} | Mana: ${selectedSpell.mana} | Click "Cast Spell" to launch it!`;
+    if (selectedSpell.name == "Dubious Durian") {
+      statsEl.textContent = `${damageOrHeal}: ${"???"} | Mana: ${selectedSpell.mana} | Click "Cast Spell" to launch it!`;
+    } else {
+      statsEl.textContent = `${damageOrHeal}: ${selectedSpell.damage} | Mana: ${selectedSpell.mana} | Click "Cast Spell" to launch it!`;
+    }
   } else {
     queueEl.style.display = 'none';
     nameEl.textContent = 'None';
@@ -681,6 +714,10 @@ function showTypingInput() {
   // Remove existing input if present
   const existing = document.getElementById('typing-input-container');
   if (existing) existing.remove();
+  
+  // Get dynamic timing based on spell tier
+  const spellTier = selectedSpell.tier;
+  const attackTimeLimit = getAttackTimeLimit(spellTier);
   
   // Create typing container
   const container = document.createElement('div');
@@ -702,7 +739,7 @@ function showTypingInput() {
   const timer = document.createElement('div');
   timer.id = 'typing-timer';
   timer.className = 'typing-timer';
-  const timerSeconds = Math.floor(ATTACK_TIME_LIMIT / 1000);
+  const timerSeconds = Math.floor(attackTimeLimit / 1000);
   timer.textContent = timerSeconds;
   
   // Only cancel on Escape (no Enter key casting)
@@ -722,8 +759,8 @@ function showTypingInput() {
   document.body.appendChild(container);
   input.focus();
   
-  // Start countdown based on ATTACK_TIME_LIMIT
-  let timeLeft = Math.floor(ATTACK_TIME_LIMIT / 1000);
+  // Start countdown based on dynamic attack time limit
+  let timeLeft = Math.floor(attackTimeLimit / 1000);
   const countdown = setInterval(() => {
     timeLeft--;
     timer.textContent = timeLeft;
@@ -956,6 +993,10 @@ function showSpellFailureMessage(spellName, failureReason, casterPlayerId, isMe)
 function showCounterInput(spell) {
   console.log('Showing counter input for spell:', spell);
   
+  // Get dynamic timing based on spell tier (lookup from spell name)
+  const spellTier = getSpellTier(spell.name);
+  const counterTimeLimit = getCounterTimeLimit(spellTier);
+  
   const container = document.createElement('div');
   container.id = 'counter-input-container';
   container.style.cssText = `
@@ -1018,8 +1059,8 @@ function showCounterInput(spell) {
   
   input.focus();
   
-  // Start countdown
-  let timeLeft = Math.floor(COUNTER_TIME_LIMIT / 1000);
+  // Start countdown using dynamic counter time limit
+  let timeLeft = Math.floor(counterTimeLimit / 1000);
   timer.textContent = timeLeft;
   
   const countdown = setInterval(() => {
@@ -1085,8 +1126,12 @@ function showAttackerWaiting(spell) {
   container.appendChild(timer);
   document.body.appendChild(container);
   
-  // Start countdown
-  let timeLeft = Math.floor(COUNTER_TIME_LIMIT / 1000);
+  // Get dynamic timing based on spell tier (lookup from spell name)
+  const spellTier = getSpellTier(spell.name);
+  const counterTimeLimit = getCounterTimeLimit(spellTier);
+  
+  // Start countdown using dynamic counter time limit
+  let timeLeft = Math.floor(counterTimeLimit / 1000);
   timer.textContent = timeLeft;
   
   const countdown = setInterval(() => {
@@ -1139,6 +1184,9 @@ function hideCounterUI() {
 function showAttackSpellEffect(spellName, defenderId) {
   console.log('showAttackSpellEffect called with:', { spellName, defenderId });
   
+  // Play sound effect for special spells
+  playSpellSoundEffect(spellName);
+  
   const imageFilename = getSpellImageFilename(spellName);
   if (!imageFilename) {
     console.warn('No image found for spell:', spellName);
@@ -1182,6 +1230,9 @@ function showAttackSpellEffect(spellName, defenderId) {
 // Show healing spell effect over the caster's player icon
 function showHealingSpellEffect(spellName, casterPlayerId) {
   console.log('showHealingSpellEffect called with:', { spellName, casterPlayerId });
+  
+  // Play sound effect for special spells
+  playSpellSoundEffect(spellName);
   
   const imageFilename = getSpellImageFilename(spellName);
   if (!imageFilename) {

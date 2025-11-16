@@ -26,11 +26,12 @@ const foodSpells = {
   "Beetroot boost": new Spell("Beetroot boost", getRandomInt(5, 8) * 2 * MEDIUM, MEDIUM, MANA_MEDIUM, "heal"),
   "Exploding cabbage curse": new Spell("Exploding cabbage curse", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "attack"),
   "Banana peel barrage": new Spell("Banana peel barrage", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "attack"),
-  "Molten marshmallow mayhem": new Spell("Molten marshmallow mayhem", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "attack"),
+  "Molten marshmallow mayhem": new Spell("Molten marshmallow mayhem", 50, HIGH, MANA_HIGH, "attack"),
   "Ghost pepper blast": new Spell("Ghost pepper blast", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "attack"),
   "Vanilla vibe check": new Spell("Vanilla vibe check", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "heal"),
   "Gravy fueled recovery": new Spell("Gravy fueled recovery", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "heal"),
-  "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "heal")
+  "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8) * 2 * HIGH, HIGH, MANA_HIGH, "heal"),
+  "Dubious Durian": new Spell("Dubious Durian", getRandomInt(-99, 99), HIGH, 50, "attack")
 };
 
 export { foodSpells };

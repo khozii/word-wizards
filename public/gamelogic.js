@@ -24,10 +24,42 @@ import { Player1, Player2, Spell } from './wwclasses.js';
 
 
 // ===== GAME CONSTANTS =====
-const ATTACK_TIME_LIMIT = 5000; // 5 seconds in milliseconds - time attacker has to type spell
-const COUNTER_TIME_LIMIT = 5000; // 5 seconds in milliseconds - time defender has to counter
+// Base timing constants - will be modified by spell tier
+const BASE_ATTACK_TIME = 4000; // Base time for attack spells
+const BASE_COUNTER_TIME = 3500; // Base time for counter attempts
 const MANA_REGEN_PER_TURN = 15; // Mana regenerated each turn
 const MANA_CAP = 50; // Maximum mana a player can have
+
+// Tier-based timing multipliers
+const TIER_TIME_MULTIPLIERS = {
+  1: 0.8,  // Low tier: 20% faster (shorter time)
+  2: 1.0,  // Medium tier: normal time
+  3: 1.3   // High tier: 30% longer
+};
+
+/**
+ * Get attack time limit based on spell tier
+ * @param {number} spellTier - The tier of the spell (1=LOW, 2=MEDIUM, 3=HIGH)
+ * @returns {number} Time limit in milliseconds
+ */
+function getAttackTimeLimit(spellTier) {
+  const multiplier = TIER_TIME_MULTIPLIERS[spellTier] || 1.0;
+  return Math.round(BASE_ATTACK_TIME * multiplier);
+}
+
+/**
+ * Get counter time limit based on spell tier
+ * @param {number} spellTier - The tier of the spell being countered (1=LOW, 2=MEDIUM, 3=HIGH)
+ * @returns {number} Time limit in milliseconds
+ */
+function getCounterTimeLimit(spellTier) {
+  const multiplier = TIER_TIME_MULTIPLIERS[spellTier] || 1.0;
+  return Math.round(BASE_COUNTER_TIME * multiplier);
+}
+
+// Legacy constants for backward compatibility
+const ATTACK_TIME_LIMIT = BASE_ATTACK_TIME;
+const COUNTER_TIME_LIMIT = BASE_COUNTER_TIME;
 
 
 
@@ -437,6 +469,8 @@ export {
     counterSpellEffectivness,
     castSpell,
     coinFlip,
+    getAttackTimeLimit,
+    getCounterTimeLimit,
     ATTACK_TIME_LIMIT,
     COUNTER_TIME_LIMIT,
     MANA_REGEN_PER_TURN,
