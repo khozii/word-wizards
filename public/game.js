@@ -10,6 +10,34 @@ import {
   processCounterSpell
 } from './gamelogic.js';
 
+// Map spell names to their corresponding image filenames
+function getSpellImageFilename(spellName) {
+  const spellImageMap = {
+    // Attack spells
+    "Nacho nuke": "NachoNuke.png",
+    "Sugarshock": "SugarShock.png",
+    "Spicebomb": "Spicebomb.png",
+    "Wasabi whiplash": "WasabiWhiplash.png",
+    "Gravy grenade": "GravyGrenade.png",
+    "Fries of fury": "FriesOfFury.png",
+    "Exploding cabbage curse": "ExplodingCabbageCurse.png",
+    "Banana peel barrage": "BananaPeelBarrage.png",
+    "Molten marshmallow mayhem": "Molten marshmallow mayhem.png",
+    "Ghost pepper blast": "GhostPepperBlast.png",
+    // Healing spells
+    "Frosting fix": "FrostingFix.png",
+    "Gumdrop glow": "GumdropGlow.png",
+    "Rhubarb remedy": "RhubarbRemedy.png",
+    "Casserole cure": "CasseroleCure.png",
+    "Beetroot boost": "BeetrootBoost.png",
+    "Vanilla vibe check": "VanillaVibeCheck.png",
+    "Gravy fueled recovery": "GravyFueledRecovery.png",
+    "Avocado aura boost": "AvocadoAuraBoost.png"
+  };
+  
+  return spellImageMap[spellName] || null;
+}
+
 // Wait for DOM to be ready before accessing elements
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -193,6 +221,13 @@ socket.on("counter-phase-end", (result) => {
   // Hide any counter UI
   hideCounterUI();
   
+  // Show attack spell effect if damage was dealt (not fully countered)
+  const damageReduction = Math.round(result.damageReductionPercent || 0);
+  if (damageReduction < 100 && result.finalDamage > 0) {
+    console.log('Showing attack spell effect for:', result.spellName);
+    showAttackSpellEffect(result.spellName, result.defenderId);
+  }
+  
   // Show counter result message
   showCounterResult(result);
 });
@@ -245,6 +280,9 @@ socket.on("state-update", (state) => {
     if (isNewAction) {
       console.log(`Healing spell cast: ${spellName} by ${casterPlayerId}`);
       showHealingMessage(spellName, casterPlayerId, isMe);
+      
+      // Show healing spell effect on the caster
+      showHealingSpellEffect(spellName, casterPlayerId);
     }
   }
   
@@ -1095,6 +1133,106 @@ function hideCounterUI() {
     if (countdown) clearInterval(countdown);
     attackerContainer.remove();
   }
+}
+
+// Show attack spell effect over the defender (center overlay)
+function showAttackSpellEffect(spellName, defenderId) {
+  console.log('showAttackSpellEffect called with:', { spellName, defenderId });
+  
+  const imageFilename = getSpellImageFilename(spellName);
+  if (!imageFilename) {
+    console.warn('No image found for spell:', spellName);
+    return;
+  }
+  
+  // Create spell effect overlay
+  const spellEffect = document.createElement('div');
+  spellEffect.id = 'attack-spell-effect';
+  spellEffect.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1500;
+    pointer-events: none;
+    animation: spellImpact 2s ease-in-out forwards;
+  `;
+  
+  const spellImage = document.createElement('img');
+  spellImage.src = `images/${imageFilename}`;
+  spellImage.alt = spellName;
+  spellImage.style.cssText = `
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.7));
+  `;
+  
+  spellEffect.appendChild(spellImage);
+  document.body.appendChild(spellEffect);
+  
+  // Remove after animation
+  setTimeout(() => {
+    if (spellEffect.parentNode) {
+      spellEffect.remove();
+    }
+  }, 2000);
+}
+
+// Show healing spell effect over the caster's player icon
+function showHealingSpellEffect(spellName, casterPlayerId) {
+  console.log('showHealingSpellEffect called with:', { spellName, casterPlayerId });
+  
+  const imageFilename = getSpellImageFilename(spellName);
+  if (!imageFilename) {
+    console.warn('No image found for spell:', spellName);
+    return;
+  }
+  
+  // Determine which player panel to show effect on
+  const casterPlayerIndex = playerOrder.indexOf(casterPlayerId);
+  const playerPanel = document.getElementById(`player-${casterPlayerIndex + 1}`);
+  
+  if (!playerPanel) {
+    console.warn('Player panel not found for caster:', casterPlayerId);
+    return;
+  }
+  
+  // Get the player panel's position
+  const panelRect = playerPanel.getBoundingClientRect();
+  
+  // Create spell effect overlay
+  const spellEffect = document.createElement('div');
+  spellEffect.id = 'healing-spell-effect';
+  spellEffect.style.cssText = `
+    position: fixed;
+    top: ${panelRect.top + panelRect.height / 2}px;
+    left: ${panelRect.left + panelRect.width / 2}px;
+    transform: translate(-50%, -50%);
+    z-index: 1500;
+    pointer-events: none;
+    animation: healingGlow 2s ease-in-out forwards;
+  `;
+  
+  const spellImage = document.createElement('img');
+  spellImage.src = `images/${imageFilename}`;
+  spellImage.alt = spellName;
+  spellImage.style.cssText = `
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 15px rgba(0, 255, 0, 0.7));
+  `;
+  
+  spellEffect.appendChild(spellImage);
+  document.body.appendChild(spellEffect);
+  
+  // Remove after animation
+  setTimeout(() => {
+    if (spellEffect.parentNode) {
+      spellEffect.remove();
+    }
+  }, 2000);
 }
 
 // Show counter result message
