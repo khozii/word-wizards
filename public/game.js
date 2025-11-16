@@ -1,4 +1,12 @@
 import { foodSpells } from './wwfoodspell.js';
+import { 
+  ATTACK_TIME_LIMIT, 
+  COUNTER_TIME_LIMIT, 
+  attemptCastSpell,
+  castPlayerSpell,
+  MANA_REGEN_PER_TURN,
+  MANA_CAP 
+} from './gamelogic.js';
 
 // Wait for DOM to be ready before accessing elements
 document.addEventListener('DOMContentLoaded', () => {
@@ -165,8 +173,16 @@ function updateUI() {
   // Update fixed slots (Player 1 / Player 2 consistent across both clients)
   const p1HpSpan = document.querySelector("#player-1 .hp");
   const p2HpSpan = document.querySelector("#player-2 .hp");
+  const p1ManaSpan = document.querySelector("#player-1 .mana");
+  const p2ManaSpan = document.querySelector("#player-2 .mana");
+  
   if (p1HpSpan) p1HpSpan.textContent = p1Hp;
   if (p2HpSpan) p2HpSpan.textContent = p2Hp;
+  
+  const p1Mana = players[p1Id]?.mana ?? 50;
+  const p2Mana = players[p2Id]?.mana ?? 50;
+  if (p1ManaSpan) p1ManaSpan.textContent = p1Mana;
+  if (p2ManaSpan) p2ManaSpan.textContent = p2Mana;
 
   const isMyTurn = currentState.turn === myId;
   currentPlayerEl.textContent = isMyTurn ? "You" : "Opponent";
@@ -185,11 +201,11 @@ function updateUI() {
 endTurnButton.addEventListener("click", () => {
   if (!roomId || !currentState || currentState.turn !== myId) return;
 
-  // TODO: REPLACE this with your real typing-based calculation
+  // End turn without casting a spell
   const action = {
-    spellName: "Placeholder Spell",
-    damage: 10,
-    // timeMs: ...
+    type: 'end-turn',
+    spellName: null,
+    damage: 0
   };
 
   socket.emit("end-turn", { roomId, action });
@@ -362,7 +378,8 @@ function showTypingInput() {
   const timer = document.createElement('div');
   timer.id = 'typing-timer';
   timer.className = 'typing-timer';
-  timer.textContent = '3';
+  const timerSeconds = Math.floor(ATTACK_TIME_LIMIT / 1000);
+  timer.textContent = timerSeconds;
   
   // Submit on Enter, cancel on Escape
   input.addEventListener('keydown', (ev) => {
@@ -381,8 +398,8 @@ function showTypingInput() {
   document.body.appendChild(container);
   input.focus();
   
-  // Start 3-second countdown
-  let timeLeft = 3;
+  // Start countdown based on ATTACK_TIME_LIMIT
+  let timeLeft = Math.floor(ATTACK_TIME_LIMIT / 1000);
   const countdown = setInterval(() => {
     timeLeft--;
     timer.textContent = timeLeft;
@@ -423,32 +440,51 @@ function submitTypedSpell(typedName) {
     return;
   }
   
-  // Validate spell name (case-insensitive exact match)
-  const isCorrect = typedName.toLowerCase() === selectedSpell.name.toLowerCase();
+  // Create mock player object for gamelogic validation (server has real state)
+  const mockPlayer = {
+    mana: 50, // Server will validate actual mana
+    health: 100,
+    shield: 0
+  };
   
-  if (isCorrect) {
+  // Use gamelogic function to validate spell cast
+  const castResult = attemptCastSpell(mockPlayer, selectedSpell, typedName);
+  
+  if (castResult.success) {
     console.log('Spell cast successfully!', selectedSpell.name);
     
-    // Create action payload
+    // Create action payload for successful cast
     const action = {
       type: 'spell-cast',
       spellName: selectedSpell.name,
       damage: selectedSpell.damage,
       spellType: selectedSpell.type,
-      mana: selectedSpell.mana
+      mana: selectedSpell.mana,
+      typedName: typedName
     };
     
-    // Send to server
+    // Send to server (server will handle actual mana consumption using gamelogic)
     socket.emit('end-turn', { roomId, action });
     
-    // Clear selected spell and update queue
-    selectedSpell = null;
-    updateSpellQueue();
-    
   } else {
-    console.log(`Spell failed! Typed "${typedName}" but needed "${selectedSpell.name}"`);
-    // Could add failure feedback here
+    console.log(`Spell failed! Reason: ${castResult.reason}`);
+    
+    // Create action payload for failed cast
+    const failedAction = {
+      type: 'spell-failed',
+      spellName: selectedSpell.name,
+      mana: selectedSpell.mana,
+      typedName: typedName,
+      reason: castResult.reason
+    };
+    
+    // Send failed action to server (server will handle mana consumption)
+    socket.emit('end-turn', { roomId, action: failedAction });
   }
+  
+  // Clear selected spell and update queue regardless of result
+  selectedSpell = null;
+  updateSpellQueue();
 }
 
 }); // End DOMContentLoaded
