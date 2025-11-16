@@ -204,7 +204,7 @@ let previousState = null;
 socket.on("state-update", (state) => {
   console.log('State update received:', state);
   
-  // Check for mana regeneration - only when it becomes MY turn
+  // Check for mana regeneration and healing - only when it becomes MY turn
   if (previousState && currentState && myId) {
     const wasMyTurn = currentState.turn === myId;
     const isNowMyTurn = state.turn === myId;
@@ -220,6 +220,8 @@ socket.on("state-update", (state) => {
       console.log(`Mana regenerated: +${manaGained}`);
       showManaRegenMessage(manaGained);
     }
+    
+
   } else {
     console.log('Mana regen check skipped:', {
       previousState: !!previousState,
@@ -228,6 +230,24 @@ socket.on("state-update", (state) => {
     });
   }
   
+  // Check for healing spells cast by anyone (immediate notification)
+  if (state.lastAction && state.lastAction.action.spellType === 'heal') {
+    const spellName = state.lastAction.action.spellName;
+    const casterPlayerId = state.lastAction.from;
+    const isMe = casterPlayerId === myId;
+    
+    // Only show if this is a new action (not a repeat from previous state)
+    const isNewAction = !previousState || 
+      !previousState.lastAction || 
+      previousState.lastAction.from !== state.lastAction.from ||
+      previousState.lastAction.action.spellName !== state.lastAction.action.spellName;
+    
+    if (isNewAction) {
+      console.log(`Healing spell cast: ${spellName} by ${casterPlayerId}`);
+      showHealingMessage(spellName, casterPlayerId, isMe);
+    }
+  }
+
   previousState = currentState;
   currentState = state;
   // keep playerOrder if present (should always be there after fix)
@@ -668,7 +688,7 @@ function submitTypedSpell(typedName) {
   console.log('Spell cast complete. You can cast another spell or click "End Turn".');
 }
 
-// Show mana regeneration message for 1 second
+// Show mana regeneration message for 1 second (purple)
 function showManaRegenMessage(manaGained) {
   console.log('showManaRegenMessage called with:', manaGained);
   
@@ -697,6 +717,49 @@ function showManaRegenMessage(manaGained) {
     messageEl.style.display = 'none';
     messageEl.style.animation = 'none';
     console.log('Mana regen message hidden');
+  }, 1000);
+}
+
+// Show healing spell message immediately when cast (green)
+function showHealingMessage(spellName, casterPlayerId, isMe) {
+  console.log('showHealingMessage called with:', { spellName, casterPlayerId, isMe });
+  
+  const messageEl = document.getElementById('healing-message');
+  console.log('Healing message element found:', !!messageEl);
+  
+  if (!messageEl) {
+    console.error('Healing message element not found!');
+    return;
+  }
+  
+  // Set message based on who cast it
+  let message;
+  if (isMe) {
+    message = `You cast ${spellName}!`;
+  } else {
+    // Determine which player number the caster is
+    const casterPlayerIndex = playerOrder.indexOf(casterPlayerId);
+    const playerNumber = casterPlayerIndex + 1; // Convert 0/1 to 1/2
+    message = `Player ${playerNumber} cast ${spellName}!`;
+  }
+  
+  messageEl.textContent = message;
+  
+  // Reset animation by removing and re-adding the animation style
+  messageEl.style.animation = 'none';
+  messageEl.style.display = 'block';
+  
+  // Force reflow and then add animation
+  messageEl.offsetHeight; 
+  messageEl.style.animation = 'manaRegenPulse 1s ease-in-out';
+  
+  console.log('Healing message displayed with animation');
+  
+  // Hide after 1 second
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+    messageEl.style.animation = 'none';
+    console.log('Healing message hidden');
   }, 1000);
 }
 
@@ -923,7 +986,7 @@ function showCounterResult(result) {
   setTimeout(() => {
     messageEl.style.display = 'none';
     messageEl.style.animation = 'none';
-    messageEl.style.background = 'linear-gradient(135deg, #4CAF50, #8BC34A)'; // Reset to mana regen colors
+    messageEl.style.background = 'linear-gradient(135deg, #9C27B0, #673AB7)'; // Reset to purple mana regen colors
   }, 2000);
 }
 
