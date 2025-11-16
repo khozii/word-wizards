@@ -346,14 +346,52 @@ function updatePlayerButtons(isMyTurn) {
   if (myPlayerIndex === 0) {
     // I am Player 1
     // Enable my buttons only on my turn, disable opponent buttons always
-    p1Buttons.forEach(btn => btn.disabled = !isMyTurn);
+    p1Buttons.forEach(btn => {
+      btn.disabled = !isMyTurn;
+      // Additional check for Choose Spell button - disable if no mana for any spell
+      if (btn.classList.contains('selection-btn') && btn.dataset.action === 'choose' && isMyTurn) {
+        const hasManaForAnySpell = checkIfCanAffordAnySpell();
+        if (!hasManaForAnySpell) {
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      }
+    });
     p2Buttons.forEach(btn => btn.disabled = true);
   } else if (myPlayerIndex === 1) {
     // I am Player 2
     // Enable my buttons only on my turn, disable opponent buttons always
-    p2Buttons.forEach(btn => btn.disabled = !isMyTurn);
+    p2Buttons.forEach(btn => {
+      btn.disabled = !isMyTurn;
+      // Additional check for Choose Spell button - disable if no mana for any spell
+      if (btn.classList.contains('selection-btn') && btn.dataset.action === 'choose' && isMyTurn) {
+        const hasManaForAnySpell = checkIfCanAffordAnySpell();
+        if (!hasManaForAnySpell) {
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      }
+    });
     p1Buttons.forEach(btn => btn.disabled = true);
   }
+}
+
+// Check if player can afford any spell
+function checkIfCanAffordAnySpell() {
+  if (!currentState || !currentState.players || !currentState.players[myId]) return false;
+  
+  const currentPlayerMana = currentState.players[myId].mana;
+  const minManaCost = 10; // MANA_LOW from wwfoodspell.js
+  
+  return currentPlayerMana >= minManaCost;
 }
 
 // Display win/lose screen
@@ -477,12 +515,38 @@ function showSpellMenu() {
     menu.appendChild(healSection);
   }
 
-  // Close button
+  // Close button container for better positioning
+  const closeContainer = document.createElement('div');
+  closeContainer.className = 'spell-menu-close-container';
+  
   const closeBtn = document.createElement('button');
   closeBtn.className = 'spell-menu-close';
-  closeBtn.textContent = 'Close';
+  closeBtn.textContent = '✕ Close Menu';
+  closeBtn.style.cssText = `
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    width: 100%;
+    transition: all 0.3s ease;
+  `;
   closeBtn.addEventListener('click', () => menu.remove());
-  menu.appendChild(closeBtn);
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.background = 'linear-gradient(135deg, #d32f2f, #b71c1c)';
+    closeBtn.style.transform = 'scale(1.02)';
+  });
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.background = 'linear-gradient(135deg, #f44336, #d32f2f)';
+    closeBtn.style.transform = 'scale(1)';
+  });
+  
+  closeContainer.appendChild(closeBtn);
+  menu.appendChild(closeContainer);
 
   document.body.appendChild(menu);
 }
@@ -492,6 +556,10 @@ function createSpellButton(spell) {
   const button = document.createElement('button');
   button.className = 'spell-item';
   
+  // Get current player's mana
+  const currentPlayerMana = currentState?.players?.[myId]?.mana ?? 0;
+  const hasEnoughMana = currentPlayerMana >= spell.mana;
+  
   const nameDiv = document.createElement('div');
   nameDiv.className = 'spell-name';
   nameDiv.textContent = spell.name;
@@ -499,17 +567,33 @@ function createSpellButton(spell) {
   const statsDiv = document.createElement('div');
   statsDiv.className = 'spell-stats';
   const damageOrHeal = spell.type === 'attack' ? 'Damage' : 'Heal';
-  statsDiv.textContent = `${damageOrHeal}: ${spell.damage} | Mana: ${spell.mana}`;
+  let statsText = `${damageOrHeal}: ${spell.damage} | Mana: ${spell.mana}`;
+  
+  // Add "Not enough mana!" if player can't afford it
+  if (!hasEnoughMana) {
+    statsText += ' | Not enough mana!';
+  }
+  
+  statsDiv.textContent = statsText;
   
   button.appendChild(nameDiv);
   button.appendChild(statsDiv);
   
-  button.addEventListener('click', () => {
-    selectedSpell = spell;
-    document.getElementById('spell-menu').remove();
-    updateSpellQueue();
-    console.log('Selected spell:', spell.name);
-  });
+  // Disable button and style if not enough mana
+  if (!hasEnoughMana) {
+    button.disabled = true;
+    button.style.opacity = '0.5';
+    button.style.cursor = 'not-allowed';
+    nameDiv.style.color = '#888';
+    statsDiv.style.color = '#888';
+  } else {
+    button.addEventListener('click', () => {
+      selectedSpell = spell;
+      document.getElementById('spell-menu').remove();
+      updateSpellQueue();
+      console.log('Selected spell:', spell.name);
+    });
+  }
   
   return button;
 }
