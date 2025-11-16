@@ -4,6 +4,8 @@ const socket = io();
 let roomId = null;
 let currentState = null; // { players: { id: { hp } }, playerOrder: [id1,id2], turn, lastAction }
 let myId = null;
+let myPlayerIndex = null; // 0 => player1, 1 => player2
+let prevIsMyTurn = null;
 let playerOrder = null; // cached ordered player ids from server
 
 // DOM refs
@@ -51,7 +53,7 @@ socket.on("waiting-for-opponent", () => {
 socket.on("match-found", (payload) => {
   roomId = payload.roomId;
   currentState = payload.state;
-  playerOrder = currentState.playerOrder;
+  playerOrder = currentState.playerOrder; // store ordered player IDs
 
   console.log("Match found:", roomId, currentState);
   if (statusEl) statusEl.textContent = `Match found! Room: ${roomId}`;
@@ -140,12 +142,17 @@ function updateUI() {
   if (p1HpSpan) p1HpSpan.textContent = p1Hp;
   if (p2HpSpan) p2HpSpan.textContent = p2Hp;
 
-  // Turn indicator shows "You" if it's your socket's turn, else the other
   const isMyTurn = currentState.turn === myId;
   currentPlayerEl.textContent = isMyTurn ? "You" : "Opponent";
   endTurnButton.disabled = !isMyTurn;
 
   console.log(`HP Update: P1(${p1Id})=${p1Hp}, P2(${p2Id})=${p2Hp}, MyId=${myId}, TurnHolder=${currentState.turn}`);
+
+  // flash overlay when turn changes (show opponent avatar)
+  if (prevIsMyTurn === null || isMyTurn !== prevIsMyTurn) {
+    flashTurnOverlay(isMyTurn);
+    prevIsMyTurn = isMyTurn;
+  }
 }
 
 // Handle End Turn: send action to server
@@ -178,4 +185,8 @@ function flashTurnOverlay(isMyTurn) {
   overlayEl.setAttribute('aria-hidden', 'false');
   // update the image in case opponent changed (no auto-hide)
   // (we already set overlayImgEl.src above)
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> f95cf28718713bb4765d2ad12afb28921949dc1f

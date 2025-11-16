@@ -7,10 +7,14 @@ body {
     background-repeat: no-repeat;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     font-family: 'Comic Sans MS', 'Trebuchet MS', cursive, sans-serif;
     text-align: center;
     font-style: italic;
 }
+
 
 header {
     background: #b4900e;
@@ -31,6 +35,19 @@ footer {
     font-family: 'Comic Sans MS', 'Trebuchet MS', cursive, sans-serif;
     text-align: center;
     font-style: italic;
+}
+
+footer p {
+    margin: 0;
+}
+
+footer {
+    background: #8c6814;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+    margin-top: auto;
 }
 
 footer p {
