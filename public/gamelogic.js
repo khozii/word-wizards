@@ -25,7 +25,7 @@ import { Player1, Player2, Spell } from './wwclasses.js';
 
 // ===== GAME CONSTANTS =====
 const ATTACK_TIME_LIMIT = 5000; // 5 seconds in milliseconds - time attacker has to type spell
-const COUNTER_TIME_LIMIT = 2000; // 2 seconds in milliseconds - time defender has to counter
+const COUNTER_TIME_LIMIT = 5000; // 5 seconds in milliseconds - time defender has to counter
 const MANA_REGEN_PER_TURN = 15; // Mana regenerated each turn
 const MANA_CAP = 50; // Maximum mana a player can have
 
@@ -52,6 +52,7 @@ function counterSpellEffectivness(spell, counter_spell_attempt) {
     let correctChars = 0;
     
     for (let i = 0; i < spellLength; i++) {
+        console.log("Comparing:", spellName[i], "to", counter_spell_attempt[i]);
         if (counter_spell_attempt[i] && spellName[i] === counter_spell_attempt[i].toLowerCase()) {
             correctChars++;
         }

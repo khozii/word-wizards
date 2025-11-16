@@ -1,7 +1,17 @@
-const path = require("path");
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+import path from "path";
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import { fileURLToPath } from "url";
+import { 
+  COUNTER_TIME_LIMIT, 
+  processCounterSpell, 
+  counterSpellEffectivness 
+} from "./public/gamelogic.js";
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
@@ -34,8 +44,11 @@ function createInitialState(p1Id, p2Id) {
 
 // Pair players into a room when possible
 function matchmake(socket) {
+  console.log(`Matchmaking for ${socket.id}, waiting players: ${waitingPlayers.length}`);
+  
   if (waitingPlayers.length > 0) {
     const opponent = waitingPlayers.shift();
+    console.log(`Pairing ${socket.id} with ${opponent.id}`);
 
     // create room
     const roomId = `room-${socket.id}-${opponent.id}`;
@@ -57,6 +70,7 @@ function matchmake(socket) {
 
     console.log(`Created game ${roomId}`);
   } else {
+    console.log(`Adding ${socket.id} to waiting list`);
     waitingPlayers.push(socket);
     socket.emit("waiting-for-opponent");
   }
@@ -64,10 +78,84 @@ function matchmake(socket) {
 
 // Socket.IO handlers 
 
+// Process counter phase and apply damage
+function processCounterPhase(roomId, counterAttempt, spellData) {
+  const game = games.get(roomId);
+  if (!game) {
+    console.log(`Game not found for counter processing: ${roomId}`);
+    return;
+  }
+  
+  const { state, players } = game;
+  
+  // Prevent double processing
+  if (state.counterProcessed) {
+    console.log(`Counter already processed for room ${roomId}`);
+    return;
+  }
+  state.counterProcessed = true;
+  
+  const defender = state.players[spellData.defenderId];
+  const attacker = state.players[spellData.attackerId];
+  
+  if (!defender || !attacker) {
+    console.log(`Player data not found for counter processing`);
+    return;
+  }
+  
+  // Create mock defender object for gamelogic
+  const mockDefender = {
+    health: defender.hp,
+    shield: 0 // Assuming no shield system in current game
+  };
+  
+  // Use the correct gamelogic function to process counter spell
+  const counterResult = processCounterSpell(mockDefender, spellData.spell, counterAttempt);
+  
+  console.log(`Counter result: ${counterResult.correctChars}/${counterResult.spellLength} chars correct, ${counterResult.damageReductionPercent}% reduction`);
+  
+  // Apply the calculated health from gamelogic
+  defender.hp = Math.max(0, mockDefender.health);
+  console.log(`${spellData.defenderId} took ${counterResult.finalDamage} damage after counter, HP: ${defender.hp}`);
+  
+  // Check for game over
+  if (defender.hp <= 0) {
+    state.gameOver = true;
+    state.winner = spellData.attackerId;
+    console.log(`Game over! Player ${spellData.attackerId} wins!`);
+  }
+  
+  // Record the action
+  state.lastAction = { 
+    from: spellData.attackerId, 
+    action: { 
+      type: 'spell-cast', 
+      spellName: spellData.spell.name,
+      damage: counterResult.finalDamage,
+      spellType: spellData.spell.type
+    }
+  };
+  
+  // Send counter phase end with results
+  const endResult = {
+    ...counterResult,
+    attackerId: spellData.attackerId,
+    defenderId: spellData.defenderId,
+    spellName: spellData.spell.name,
+    counterAttempt: counterAttempt
+  };
+  
+  io.to(roomId).emit("counter-phase-end", endResult);
+  
+  // Send updated game state
+  io.to(roomId).emit("state-update", state);
+}
+
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on("find-match", () => {
+    console.log(`Received find-match from ${socket.id}`);
     matchmake(socket);
   });
 
@@ -109,30 +197,46 @@ io.on("connection", (socket) => {
         
         // Apply spell effect
         if (action.spellType === 'attack') {
-          // Deal damage to opponent
-          opponent.hp = Math.max(0, opponent.hp - action.damage);
-          console.log(`${socket.id} cast ${action.spellName} for ${action.damage} damage, opponent HP: ${opponent.hp}`);
+          // For attack spells, start counter phase instead of applying damage immediately
+          const opponentId = players.find((id) => id !== socket.id);
+          
+          console.log(`Starting counter phase for attack spell: ${action.spellName}`);
+          
+          // Start counter phase
+          const counterData = {
+            attackerId: socket.id,
+            defenderId: opponentId,
+            spell: {
+              name: action.spellName,
+              damage: action.damage,
+              type: action.spellType
+            },
+            roomId: roomId
+          };
+          
+          // Send counter phase start to both players
+          io.to(roomId).emit("counter-phase-start", counterData);
+          
+          // Mark that we're waiting for counter - don't process until client submits
+          state.counterProcessed = false;
+          
         } else if (action.spellType === 'heal') {
-          // Heal current player
+          // Heal spells don't trigger counter phase
           currentPlayer.hp = Math.min(100, currentPlayer.hp + action.damage);
           console.log(`${socket.id} cast ${action.spellName} for ${action.damage} healing, HP: ${currentPlayer.hp}`);
+          
+          // Record the action and send update immediately for heal spells
+          state.lastAction = { from: socket.id, action };
+          io.to(roomId).emit("state-update", state);
         }
         
-        // Check for game over
-        if (opponent.hp <= 0) {
-          state.gameOver = true;
-          state.winner = socket.id;
-          console.log(`Game over! Player ${socket.id} wins!`);
-        }
       } else {
         console.log(`${socket.id} tried to cast ${action.spellName} but had insufficient mana (${currentPlayer.mana}/${action.mana})`);
+        
+        // Send update for insufficient mana
+        state.lastAction = { from: socket.id, action };
+        io.to(roomId).emit("state-update", state);
       }
-      
-      // Record the action
-      state.lastAction = { from: socket.id, action };
-      
-      // Send update but DON'T end turn (player can cast more spells)
-      io.to(roomId).emit("state-update", state);
       
     } else if (action.type === 'spell-failed') {
       console.log(`Processing failed spell: ${action.spellName}`);
@@ -167,6 +271,27 @@ io.on("connection", (socket) => {
       // Send update with new turn
       io.to(roomId).emit("state-update", state);
     }
+  });
+
+  // Handle counter attempts
+  socket.on("counter-attempt", ({ roomId, counterAttempt, spellData }) => {
+    console.log(`Counter attempt from ${socket.id}: "${counterAttempt}"`);
+    
+    const game = games.get(roomId);
+    if (!game) {
+      console.log(`Game not found for counter attempt: ${roomId}`);
+      return;
+    }
+    
+    // Verify this is the defender
+    if (spellData.defenderId !== socket.id) {
+      console.log(`Invalid counter attempt: ${socket.id} is not the defender`);
+      return;
+    }
+    
+    // Process the counter with user's attempt (submitted after timer)
+    console.log('Processing user counter attempt:', counterAttempt);
+    processCounterPhase(roomId, counterAttempt, spellData);
   });
 
   socket.on("disconnect", () => {
