@@ -1,4 +1,12 @@
 import { foodSpells } from './wwfoodspell.js';
+import { 
+  ATTACK_TIME_LIMIT, 
+  COUNTER_TIME_LIMIT, 
+  attemptCastSpell,
+  castPlayerSpell,
+  MANA_REGEN_PER_TURN,
+  MANA_CAP 
+} from './gamelogic.js';
 
 // Wait for DOM to be ready before accessing elements
 document.addEventListener('DOMContentLoaded', () => {
@@ -54,6 +62,19 @@ startButton.addEventListener("click", () => {
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('selection-btn') && e.target.dataset.action === 'choose') {
     showSpellMenu();
+  }
+  
+  // Handle Cast Spell button
+  if (e.target.classList.contains('action-btn') && e.target.dataset.action === 'spell') {
+    if (!currentState || currentState.turn !== myId) {
+      console.log('Not your turn!');
+      return;
+    }
+    if (!selectedSpell) {
+      alert('Please choose a spell first!');
+      return;
+    }
+    showTypingInput();
   }
 });
 
@@ -152,8 +173,16 @@ function updateUI() {
   // Update fixed slots (Player 1 / Player 2 consistent across both clients)
   const p1HpSpan = document.querySelector("#player-1 .hp");
   const p2HpSpan = document.querySelector("#player-2 .hp");
+  const p1ManaSpan = document.querySelector("#player-1 .mana");
+  const p2ManaSpan = document.querySelector("#player-2 .mana");
+  
   if (p1HpSpan) p1HpSpan.textContent = p1Hp;
   if (p2HpSpan) p2HpSpan.textContent = p2Hp;
+  
+  const p1Mana = players[p1Id]?.mana ?? 50;
+  const p2Mana = players[p2Id]?.mana ?? 50;
+  if (p1ManaSpan) p1ManaSpan.textContent = p1Mana;
+  if (p2ManaSpan) p2ManaSpan.textContent = p2Mana;
 
   const isMyTurn = currentState.turn === myId;
   currentPlayerEl.textContent = isMyTurn ? "You" : "Opponent";
@@ -172,11 +201,11 @@ function updateUI() {
 endTurnButton.addEventListener("click", () => {
   if (!roomId || !currentState || currentState.turn !== myId) return;
 
-  // TODO: REPLACE this with your real typing-based calculation
+  // End turn without casting a spell
   const action = {
-    spellName: "Placeholder Spell",
-    damage: 10,
-    // timeMs: ...
+    type: 'end-turn',
+    spellName: null,
+    damage: 0
   };
 
   socket.emit("end-turn", { roomId, action });
@@ -296,10 +325,166 @@ function createSpellButton(spell) {
   button.addEventListener('click', () => {
     selectedSpell = spell;
     document.getElementById('spell-menu').remove();
+    updateSpellQueue();
     console.log('Selected spell:', spell.name);
   });
   
   return button;
+}
+
+// Update spell queue display
+function updateSpellQueue() {
+  const queueEl = document.getElementById('spell-queue');
+  const nameEl = document.getElementById('queued-spell-name');
+  const statsEl = document.getElementById('queued-spell-stats');
+  
+  if (!queueEl || !nameEl || !statsEl) return;
+  
+  if (selectedSpell) {
+    queueEl.style.display = 'block';
+    nameEl.textContent = selectedSpell.name;
+    const damageOrHeal = selectedSpell.type === 'attack' ? 'Damage' : 'Heal';
+    statsEl.textContent = `${damageOrHeal}: ${selectedSpell.damage} | Mana: ${selectedSpell.mana} | Click "Cast Spell" to launch it!`;
+  } else {
+    queueEl.style.display = 'none';
+    nameEl.textContent = 'None';
+    statsEl.textContent = 'Click "Cast Spell" to launch it!';
+  }
+}
+
+// Show typing input for spell casting
+function showTypingInput() {
+  // Remove existing input if present
+  const existing = document.getElementById('typing-input-container');
+  if (existing) existing.remove();
+  
+  // Create typing container
+  const container = document.createElement('div');
+  container.id = 'typing-input-container';
+  container.className = 'typing-input-container';
+  
+  const label = document.createElement('label');
+  label.textContent = `Type "${selectedSpell.name}" to cast:`;
+  label.className = 'typing-label';
+  
+  const input = document.createElement('input');
+  input.id = 'typing-input';
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.placeholder = 'Type the spell name exactly...';
+  input.className = 'typing-input-field';
+  
+  // Timer display
+  const timer = document.createElement('div');
+  timer.id = 'typing-timer';
+  timer.className = 'typing-timer';
+  const timerSeconds = Math.floor(ATTACK_TIME_LIMIT / 1000);
+  timer.textContent = timerSeconds;
+  
+  // Submit on Enter, cancel on Escape
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      submitTypedSpell(input.value.trim());
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      container.remove();
+    }
+  });
+  
+  container.appendChild(label);
+  container.appendChild(input);
+  container.appendChild(timer);
+  document.body.appendChild(container);
+  input.focus();
+  
+  // Start countdown based on ATTACK_TIME_LIMIT
+  let timeLeft = Math.floor(ATTACK_TIME_LIMIT / 1000);
+  const countdown = setInterval(() => {
+    timeLeft--;
+    timer.textContent = timeLeft;
+    
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+      const currentInput = document.getElementById('typing-input');
+      const currentValue = currentInput ? currentInput.value.trim() : '';
+      container.remove();
+      
+      // Cast spell with whatever was typed when time runs out
+      if (currentValue) {
+        submitTypedSpell(currentValue);
+      } else {
+        console.log('Time up! No spell typed.');
+      }
+    }
+  }, 1000);
+  
+  // Store countdown so we can clear it if spell is cast
+  container._countdown = countdown;
+}
+
+// Submit typed spell and validate
+function submitTypedSpell(typedName) {
+  const container = document.getElementById('typing-input-container');
+  if (!container) return;
+  
+  // Clear countdown
+  const countdown = container._countdown;
+  if (countdown) clearInterval(countdown);
+  
+  // Remove input
+  container.remove();
+  
+  if (!currentState || !roomId || currentState.turn !== myId || !selectedSpell) {
+    console.log('Invalid spell cast attempt');
+    return;
+  }
+  
+  // Create mock player object for gamelogic validation (server has real state)
+  const mockPlayer = {
+    mana: 50, // Server will validate actual mana
+    health: 100,
+    shield: 0
+  };
+  
+  // Use gamelogic function to validate spell cast
+  const castResult = attemptCastSpell(mockPlayer, selectedSpell, typedName);
+  
+  if (castResult.success) {
+    console.log('Spell cast successfully!', selectedSpell.name);
+    
+    // Create action payload for successful cast
+    const action = {
+      type: 'spell-cast',
+      spellName: selectedSpell.name,
+      damage: selectedSpell.damage,
+      spellType: selectedSpell.type,
+      mana: selectedSpell.mana,
+      typedName: typedName
+    };
+    
+    // Send to server (server will handle actual mana consumption using gamelogic)
+    socket.emit('end-turn', { roomId, action });
+    
+  } else {
+    console.log(`Spell failed! Reason: ${castResult.reason}`);
+    
+    // Create action payload for failed cast
+    const failedAction = {
+      type: 'spell-failed',
+      spellName: selectedSpell.name,
+      mana: selectedSpell.mana,
+      typedName: typedName,
+      reason: castResult.reason
+    };
+    
+    // Send failed action to server (server will handle mana consumption)
+    socket.emit('end-turn', { roomId, action: failedAction });
+  }
+  
+  // Clear selected spell and update queue regardless of result
+  selectedSpell = null;
+  updateSpellQueue();
 }
 
 }); // End DOMContentLoaded
