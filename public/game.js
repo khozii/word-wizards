@@ -389,13 +389,21 @@ function showTypingInput() {
     
     if (timeLeft <= 0) {
       clearInterval(countdown);
+      const currentInput = document.getElementById('typing-input');
+      const currentValue = currentInput ? currentInput.value.trim() : '';
       container.remove();
-      console.log('Time up! Spell failed.');
+      
+      // Cast spell with whatever was typed when time runs out
+      if (currentValue) {
+        submitTypedSpell(currentValue);
+      } else {
+        console.log('Time up! No spell typed.');
+      }
     }
   }, 1000);
   
   // Store countdown so we can clear it if spell is cast
-  container.dataset.countdown = countdown;
+  container._countdown = countdown;
 }
 
 // Submit typed spell and validate
@@ -404,7 +412,7 @@ function submitTypedSpell(typedName) {
   if (!container) return;
   
   // Clear countdown
-  const countdown = container.dataset.countdown;
+  const countdown = container._countdown;
   if (countdown) clearInterval(countdown);
   
   // Remove input
