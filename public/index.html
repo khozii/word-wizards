@@ -27,6 +27,7 @@
             <h2>Welcome to Word Wizards!</h2>
             <button id="start-button">Start Game</button>
             <button id="options-button">Options</button>
+            <p id="status" style="margin-top: 1rem; font-weight: bold; color: #6a1b9a;"></p>
             
         </div>
 
@@ -77,21 +78,8 @@
         </div>
     </main>
 
-    
-
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="wordwizards.js"></script>
-    <script type="module" src="wwfoodspell.js"></script>
-    <script type="module" src="wwclasses.js"></script>
-
-    <h1>Word Wizards</h1>
-    <p>If you see this, the site is running ✅</p>
-
-
-    <p>Status: <span id="status">Connecting...</span></p>
-    <ul id="messages"></ul>
-
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
     <footer>
         <p>&copy; 2025 Word Wizards. All rights reserved.</p>
     </footer>
