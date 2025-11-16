@@ -25,6 +25,8 @@ function createInitialState(p1Id, p2Id) {
       [p1Id]: { hp: 100 },
       [p2Id]: { hp: 100 }
     },
+    // Fixed player order so both clients render consistent Player 1 / Player 2
+    playerOrder: [p1Id, p2Id],
     turn: p1Id,   // whose turn it is (socket.id)
     lastAction: null
   };
@@ -50,7 +52,6 @@ function matchmake(socket) {
     // Tell both players match is ready
     io.to(roomId).emit("match-found", {
       roomId,
-      youAre: null, // each client will figure out if it's P1/P2 by comparing ids if they care
       state: initialState
     });
 
