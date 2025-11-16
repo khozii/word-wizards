@@ -15,10 +15,11 @@ export class Player2 {
 }
 
 export class Spell {
-    constructor(name, damage, tier, mana) {
+    constructor(name, damage, tier, mana, type) {
         this.name = name;
         this.damage = damage;
         this.tier = tier;
         this.mana = mana;
+        this.type = type;
     }
 }
