@@ -5,7 +5,9 @@ import {
   attemptCastSpell,
   castPlayerSpell,
   MANA_REGEN_PER_TURN,
-  MANA_CAP 
+  MANA_CAP,
+  counterSpellEffectivness,
+  processCounterSpell
 } from './gamelogic.js';
 
 // Wait for DOM to be ready before accessing elements
@@ -21,6 +23,8 @@ let myPlayerIndex = null; // 0 => player1, 1 => player2
 let prevIsMyTurn = null;
 let playerOrder = null; // cached ordered player ids from server
 let selectedSpell = null; // tracks the spell chosen from the menu
+let isInCounterPhase = false; // tracks if we're in a counter phase
+let counterSpellData = null; // stores data for the current counter phase
 
 // DOM refs
 const startScreen = document.getElementById("start-screen");
@@ -53,6 +57,7 @@ socket.on("disconnect", () => {
 
 // Click "Start Game" to find an online opponent
 startButton.addEventListener("click", () => {
+  console.log("Start button clicked, sending find-match");
   socket.emit("find-match");
   if (statusEl) statusEl.textContent = "Searching for an opponent...";
   startButton.disabled = true;
@@ -80,11 +85,13 @@ document.addEventListener('click', (e) => {
 
 // Server says you're in queue
 socket.on("waiting-for-opponent", () => {
+  console.log("Received waiting-for-opponent event");
   if (statusEl) statusEl.textContent = "Waiting for another player...";
 });
 
 // Server found a match
 socket.on("match-found", (payload) => {
+  console.log("Received match-found event with payload:", payload);
   roomId = payload.roomId;
   currentState = payload.state;
   playerOrder = currentState.playerOrder; // store ordered player IDs
@@ -150,6 +157,40 @@ socket.on("match-found", (payload) => {
   prevIsMyTurn = null;
 
   updateUI();
+});
+
+// Counter phase events
+socket.on("counter-phase-start", (data) => {
+  console.log('=== COUNTER PHASE START ===');
+  console.log('Counter phase started:', data);
+  console.log('My ID:', myId);
+  console.log('Defender ID:', data.defenderId);
+  console.log('Am I defender?', data.defenderId === myId);
+  
+  isInCounterPhase = true;
+  counterSpellData = data;
+  
+  if (data.defenderId === myId) {
+    console.log('Showing counter input for defender');
+    // I am the defender - show counter input
+    showCounterInput(data.spell);
+  } else {
+    console.log('Showing attacker waiting screen');
+    // I am the attacker - show waiting message
+    showAttackerWaiting(data.spell);
+  }
+});
+
+socket.on("counter-phase-end", (result) => {
+  console.log('Counter phase ended:', result);
+  isInCounterPhase = false;
+  counterSpellData = null;
+  
+  // Hide any counter UI
+  hideCounterUI();
+  
+  // Show counter result message
+  showCounterResult(result);
 });
 
 // Track previous state for mana regeneration detection
@@ -287,6 +328,12 @@ function updatePlayerButtons(isMyTurn) {
 function showSpellMenu() {
   // Only allow during player's turn
   if (!currentState || currentState.turn !== myId) return;
+  
+  // Don't allow spell casting during counter phase
+  if (isInCounterPhase) {
+    console.log('Cannot cast spells during counter phase!');
+    return;
+  }
 
   // Remove existing menu if present
   const existing = document.getElementById('spell-menu');
@@ -590,6 +637,233 @@ function showManaRegenMessage(manaGained) {
     messageEl.style.animation = 'none';
     console.log('Mana regen message hidden');
   }, 1000);
+}
+
+// Show counter input for defender
+function showCounterInput(spell) {
+  console.log('Showing counter input for spell:', spell);
+  
+  const container = document.createElement('div');
+  container.id = 'counter-input-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 0, 0, 0.9);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 3000;
+    border: 3px solid #ff0000;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  `;
+  
+  const title = document.createElement('h3');
+  title.textContent = 'INCOMING SPELL!';
+  title.style.cssText = 'margin: 0 0 10px 0; color: #ffff00; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.7);';
+  
+  const spellName = document.createElement('div');
+  spellName.textContent = `"${spell.name}"`;
+  spellName.style.cssText = 'font-size: 20px; font-weight: bold; margin: 10px 0; color: #ff8888;';
+  
+  const instruction = document.createElement('div');
+  instruction.textContent = 'Type the spell name to reduce damage!';
+  instruction.style.cssText = 'margin: 10px 0; font-size: 16px;';
+  
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'counter-input';
+  input.placeholder = 'Type spell name...';
+  input.style.cssText = `
+    width: 200px;
+    padding: 8px;
+    font-size: 16px;
+    border: 2px solid #fff;
+    border-radius: 4px;
+    text-align: center;
+    margin: 10px 0;
+  `;
+  
+  const timer = document.createElement('div');
+  timer.id = 'counter-timer';
+  timer.style.cssText = `
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffff00;
+    margin: 10px 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+  `;
+  
+  container.appendChild(title);
+  container.appendChild(spellName);
+  container.appendChild(instruction);
+  container.appendChild(input);
+  container.appendChild(timer);
+  document.body.appendChild(container);
+  
+  input.focus();
+  
+  // Start countdown
+  let timeLeft = Math.floor(COUNTER_TIME_LIMIT / 1000);
+  timer.textContent = timeLeft;
+  
+  const countdown = setInterval(() => {
+    timeLeft--;
+    timer.textContent = timeLeft;
+    
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+      const typedAttempt = input.value.trim();
+      submitCounterAttempt(typedAttempt);
+    }
+  }, 1000);
+  
+  // Store countdown for cleanup
+  container._countdown = countdown;
+}
+
+// Show waiting message for attacker
+function showAttackerWaiting(spell) {
+  console.log('Showing attacker waiting for spell:', spell);
+  
+  const container = document.createElement('div');
+  container.id = 'attacker-waiting-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 255, 0.9);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 3000;
+    border: 3px solid #0000ff;
+    box-shadow: 0 0 20px rgba(0, 0, 255, 0.5);
+  `;
+  
+  const title = document.createElement('h3');
+  title.textContent = 'Spell Cast!';
+  title.style.cssText = 'margin: 0 0 10px 0; color: #ffff00; font-size: 24px;';
+  
+  const spellName = document.createElement('div');
+  spellName.textContent = `"${spell.name}"`;
+  spellName.style.cssText = 'font-size: 20px; font-weight: bold; margin: 10px 0; color: #8888ff;';
+  
+  const waiting = document.createElement('div');
+  waiting.textContent = 'Opponent is countering...';
+  waiting.style.cssText = 'margin: 10px 0; font-size: 16px; font-style: italic;';
+  
+  const timer = document.createElement('div');
+  timer.id = 'attacker-timer';
+  timer.style.cssText = `
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffff00;
+    margin: 10px 0;
+  `;
+  
+  container.appendChild(title);
+  container.appendChild(spellName);
+  container.appendChild(waiting);
+  container.appendChild(timer);
+  document.body.appendChild(container);
+  
+  // Start countdown
+  let timeLeft = Math.floor(COUNTER_TIME_LIMIT / 1000);
+  timer.textContent = timeLeft;
+  
+  const countdown = setInterval(() => {
+    timeLeft--;
+    timer.textContent = timeLeft;
+    
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+    }
+  }, 1000);
+  
+  container._countdown = countdown;
+}
+
+// Submit counter attempt to server
+function submitCounterAttempt(counterAttempt) {
+  console.log('Submitting counter attempt:', counterAttempt);
+  
+  if (!counterSpellData || !roomId) {
+    console.error('No counter data available');
+    return;
+  }
+  
+  socket.emit('counter-attempt', {
+    roomId: roomId,
+    counterAttempt: counterAttempt,
+    spellData: counterSpellData
+  });
+}
+
+// Hide all counter UI
+function hideCounterUI() {
+  const counterContainer = document.getElementById('counter-input-container');
+  const attackerContainer = document.getElementById('attacker-waiting-container');
+  
+  if (counterContainer) {
+    const countdown = counterContainer._countdown;
+    if (countdown) clearInterval(countdown);
+    counterContainer.remove();
+  }
+  
+  if (attackerContainer) {
+    const countdown = attackerContainer._countdown;
+    if (countdown) clearInterval(countdown);
+    attackerContainer.remove();
+  }
+}
+
+// Show counter result message
+function showCounterResult(result) {
+  console.log('Showing counter result:', result);
+  
+  const messageEl = document.getElementById('mana-regen-message'); // Reuse existing message element
+  if (!messageEl) return;
+  
+  const damageReduction = Math.round(result.damageReductionPercent || 0);
+  const finalDamage = Math.round(result.finalDamage || 0);
+  
+  let message;
+  if (result.defenderId === myId) {
+    // I was defending
+    if (damageReduction > 0) {
+      message = `Counter: ${damageReduction}% damage blocked! Took ${finalDamage} damage.`;
+    } else {
+      message = `Counter failed! Took full ${finalDamage} damage.`;
+    }
+  } else {
+    // I was attacking
+    if (damageReduction > 0) {
+      message = `Opponent countered ${damageReduction}%! Dealt ${finalDamage} damage.`;
+    } else {
+      message = `Counter failed! Dealt full ${finalDamage} damage.`;
+    }
+  }
+  
+  messageEl.textContent = message;
+  messageEl.style.background = damageReduction > 0 ? 'linear-gradient(135deg, #ff9800, #f57c00)' : 'linear-gradient(135deg, #f44336, #d32f2f)';
+  messageEl.style.animation = 'none';
+  messageEl.style.display = 'block';
+  
+  // Force reflow and add animation
+  messageEl.offsetHeight;
+  messageEl.style.animation = 'manaRegenPulse 1s ease-in-out';
+  
+  // Hide after 2 seconds (longer for counter results)
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+    messageEl.style.animation = 'none';
+    messageEl.style.background = 'linear-gradient(135deg, #4CAF50, #8BC34A)'; // Reset to mana regen colors
+  }, 2000);
 }
 
 }); // End DOMContentLoaded
