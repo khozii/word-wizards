@@ -73,10 +73,11 @@
         </div>
     </main>
 
-    <!-- changed to load the JS as a module so imports work -->
-    <script type="module" src="wordwizards.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 
-    <!-- Local pass-and-play logic moved to wordwizards.js -->
+    <script type="module" src="wordwizards.js"></script>
+    <script type="module" src="wwfoodspell.js"></script>
+    <script type="module" src="wwclasses.js"></script>
 
     <h1>Word Wizards</h1>
     <p>If you see this, the site is running ✅</p>
@@ -84,8 +85,6 @@
     <p>Status: <span id="status">Connecting...</span></p>
     <ul id="messages"></ul>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
-    <script src="wwclasses.js"></script>
 </body>
 </html>
