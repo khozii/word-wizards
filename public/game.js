@@ -232,21 +232,6 @@ endTurnButton.addEventListener("click", () => {
   socket.emit("end-turn", { roomId, action });
 });
 
-<<<<<<< HEAD
-// CHANGED: Show typing input when player clicks the Cast Spell button in the UI
-document.getElementById('players')?.addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  const panel = btn.closest('.player');
-  if (!panel) return;
-  const action = btn.dataset.action;
-  if (action === 'spell') {
-    // only allow when it's our turn
-    if (!currentState || currentState.turn !== myId) return;
-    showTypingInput();
-  }
-});
-=======
 // show the opponent avatar in the center briefly when turn changes
 function flashTurnOverlay(isMyTurn) {
   if (!overlayEl || !overlayImgEl || myPlayerIndex === null) return;
@@ -264,4 +249,3 @@ function flashTurnOverlay(isMyTurn) {
   // update the image in case opponent changed (no auto-hide)
   // (we already set overlayImgEl.src above)
 }
->>>>>>> d96d4a1ffff8ce8d183ab7c8a48d65a8ecc06bce
