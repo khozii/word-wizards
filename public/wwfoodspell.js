@@ -12,7 +12,7 @@ const MANA_LOW = 10 * LOW;
 const MANA_MEDIUM = 10 * MEDIUM;
 const MANA_HIGH = 10 * HIGH;
 
-export const foodSpells = {
+const foodSpells = {
   "Nacho nuke": new Spell(getRandomInt(5, 8), LOW, MANA_LOW, "attack"),
   "Sugarshock": new Spell(getRandomInt(5, 8), LOW, MANA_LOW, "attack"),
   "Spicebomb": new Spell(getRandomInt(5, 8), LOW, MANA_LOW, "attack"),
