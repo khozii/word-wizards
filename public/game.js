@@ -2,10 +2,9 @@
 const socket = io();
 
 let roomId = null;
-let currentState = null; // { players: { id: { hp } }, turn, lastAction }
+let currentState = null; // { players: { id: { hp } }, playerOrder: [id1,id2], turn, lastAction }
 let myId = null;
-let myPlayerIndex = null; // 0 => player1, 1 => player2
-let prevIsMyTurn = null;
+let playerOrder = null; // cached ordered player ids from server
 
 // DOM refs
 const startScreen = document.getElementById("start-screen");
@@ -52,6 +51,7 @@ socket.on("waiting-for-opponent", () => {
 socket.on("match-found", (payload) => {
   roomId = payload.roomId;
   currentState = payload.state;
+  playerOrder = currentState.playerOrder;
 
   console.log("Match found:", roomId, currentState);
   if (statusEl) statusEl.textContent = `Match found! Room: ${roomId}`;
@@ -119,103 +119,33 @@ socket.on("match-found", (payload) => {
 // Server sends updated state after a turn
 socket.on("state-update", (state) => {
   currentState = state;
+  // keep playerOrder if present (should always be there after fix)
+  if (state.playerOrder) playerOrder = state.playerOrder;
   updateUI();
 });
 
 // Update the HP display + whose turn
 function updateUI() {
-  if (!currentState || !myId) return;
+  if (!currentState || !myId || !playerOrder) return;
 
   const players = currentState.players;
+  const p1Id = playerOrder[0];
+  const p2Id = playerOrder[1];
+  const p1Hp = players[p1Id]?.hp ?? 0;
+  const p2Hp = players[p2Id]?.hp ?? 0;
 
-  const myHp = players[myId]?.hp ?? 0;
-  const opponentId = Object.keys(players).find((id) => id !== myId);
-  const opponentHp = players[opponentId]?.hp ?? 0;
+  // Update fixed slots (Player 1 / Player 2 consistent across both clients)
+  const p1HpSpan = document.querySelector("#player-1 .hp");
+  const p2HpSpan = document.querySelector("#player-2 .hp");
+  if (p1HpSpan) p1HpSpan.textContent = p1Hp;
+  if (p2HpSpan) p2HpSpan.textContent = p2Hp;
 
-  // For now, treat Player 1 as "you", Player 2 as "opponent" in the UI.
-  p1HpEl.textContent = myHp;
-  p2HpEl.textContent = opponentHp;
-
+  // Turn indicator shows "You" if it's your socket's turn, else the other
   const isMyTurn = currentState.turn === myId;
   currentPlayerEl.textContent = isMyTurn ? "You" : "Opponent";
   endTurnButton.disabled = !isMyTurn;
 
-  // flash overlay when turn changes (show opponent avatar)
-  if (prevIsMyTurn === null || isMyTurn !== prevIsMyTurn) {
-    flashTurnOverlay(isMyTurn);
-    prevIsMyTurn = isMyTurn;
-  }
-}
-
-// CHANGED: Show typing textbox when a player clicks "Cast Spell" so they can see what they type.
-// - Creates an input positioned on the left side under the active player
-// - Styled to match the game theme (purple/teal gradient, rounded corners)
-// - Submits on Enter (emits `end-turn` with action)
-// - Only available when it's the local player's turn
-function showTypingInput() {
-  // If an input already exists, focus it
-  let wrap = document.getElementById('typing-input-wrap');
-  if (wrap) {
-    const existing = document.getElementById('typing-input');
-    if (existing) existing.focus();
-    return;
-  }
-
-  wrap = document.createElement('div');
-  wrap.id = 'typing-input-wrap';
-  wrap.className = 'typing-input-container';
-
-  const label = document.createElement('label');
-  label.textContent = 'Cast spell:';
-  label.className = 'typing-label';
-  
-  const input = document.createElement('input');
-  input.id = 'typing-input';
-  input.type = 'text';
-  input.autocomplete = 'off';
-  input.placeholder = 'Type spell name...';
-  input.className = 'typing-input-field';
-
-  // Submit on Enter, cancel on Escape
-  input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      submitTypedSpell(input.value.trim());
-    } else if (ev.key === 'Escape') {
-      ev.preventDefault();
-      wrap.remove();
-    }
-  });
-
-  label.appendChild(input);
-  wrap.appendChild(label);
-  document.body.appendChild(wrap);
-  input.focus();
-}
-
-function submitTypedSpell(spellName) {
-  const wrap = document.getElementById('typing-input-wrap');
-  if (!currentState || !roomId || currentState.turn !== myId) {
-    if (wrap) wrap.remove();
-    return;
-  }
-
-  if (!spellName) {
-    // don't send empty actions; just remove input
-    if (wrap) wrap.remove();
-    return;
-  }
-
-  // For now, emit the same `end-turn` action payload used elsewhere.
-  const action = {
-    spellName: spellName,
-    damage: 10
-  };
-
-  socket.emit('end-turn', { roomId, action });
-
-  // remove input after submit
-  if (wrap) wrap.remove();
+  console.log(`HP Update: P1(${p1Id})=${p1Hp}, P2(${p2Id})=${p2Hp}, MyId=${myId}, TurnHolder=${currentState.turn}`);
 }
 
 // Handle End Turn: send action to server

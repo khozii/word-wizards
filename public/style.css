@@ -7,14 +7,10 @@ body {
     background-repeat: no-repeat;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
     font-family: 'Comic Sans MS', 'Trebuchet MS', cursive, sans-serif;
     text-align: center;
     font-style: italic;
 }
-
 
 header {
     background: #b4900e;
@@ -147,8 +143,8 @@ button {
   background: linear-gradient(#fff,#f0f0f0);
   cursor: pointer;
   font-family: 'Comic Sans MS', 'Trebuchet MS', cursive, sans-serif;
-    text-align: center;
-    font-style: italic;
+  text-align: center;
+  font-style: italic;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
