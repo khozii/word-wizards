@@ -152,8 +152,38 @@ socket.on("match-found", (payload) => {
   updateUI();
 });
 
+// Track previous state for mana regeneration detection
+let previousState = null;
+
 // Server sends updated state after a turn
 socket.on("state-update", (state) => {
+  console.log('State update received:', state);
+  
+  // Check for mana regeneration - only when it becomes MY turn
+  if (previousState && currentState && myId) {
+    const wasMyTurn = currentState.turn === myId;
+    const isNowMyTurn = state.turn === myId;
+    const prevMana = currentState.players?.[myId]?.mana ?? 50;
+    const newMana = state.players?.[myId]?.mana ?? 50;
+    
+    console.log(`Turn check: wasMyTurn=${wasMyTurn}, isNowMyTurn=${isNowMyTurn}`);
+    console.log(`Mana check: prevMana=${prevMana}, newMana=${newMana}, myId=${myId}`);
+    
+    // Only check for mana regen when it becomes my turn (not when I'm ending my turn)
+    if (!wasMyTurn && isNowMyTurn && newMana > prevMana) {
+      const manaGained = newMana - prevMana;
+      console.log(`Mana regenerated: +${manaGained}`);
+      showManaRegenMessage(manaGained);
+    }
+  } else {
+    console.log('Mana regen check skipped:', {
+      previousState: !!previousState,
+      currentState: !!currentState,
+      myId: !!myId
+    });
+  }
+  
+  previousState = currentState;
   currentState = state;
   // keep playerOrder if present (should always be there after fix)
   if (state.playerOrder) playerOrder = state.playerOrder;
@@ -381,14 +411,14 @@ function showTypingInput() {
   const timerSeconds = Math.floor(ATTACK_TIME_LIMIT / 1000);
   timer.textContent = timerSeconds;
   
-  // Submit on Enter, cancel on Escape
+  // Only cancel on Escape (no Enter key casting)
   input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      submitTypedSpell(input.value.trim());
-    } else if (ev.key === 'Escape') {
+    if (ev.key === 'Escape') {
       ev.preventDefault();
       container.remove();
+      // Clear selected spell when cancelled
+      selectedSpell = null;
+      updateSpellQueue();
     }
   });
   
@@ -410,12 +440,8 @@ function showTypingInput() {
       const currentValue = currentInput ? currentInput.value.trim() : '';
       container.remove();
       
-      // Cast spell with whatever was typed when time runs out
-      if (currentValue) {
-        submitTypedSpell(currentValue);
-      } else {
-        console.log('Time up! No spell typed.');
-      }
+      // Always cast spell when timer ends (even if empty)
+      submitTypedSpell(currentValue);
     }
   }, 1000);
   
@@ -425,18 +451,32 @@ function showTypingInput() {
 
 // Submit typed spell and validate
 function submitTypedSpell(typedName) {
+  console.log('submitTypedSpell called with:', typedName);
+  console.log('selectedSpell:', selectedSpell);
+  console.log('currentState:', currentState);
+  console.log('roomId:', roomId);
+  console.log('myId:', myId);
+  
+  // Clean up input container if it still exists
   const container = document.getElementById('typing-input-container');
-  if (!container) return;
-  
-  // Clear countdown
-  const countdown = container._countdown;
-  if (countdown) clearInterval(countdown);
-  
-  // Remove input
-  container.remove();
+  if (container) {
+    // Clear countdown
+    const countdown = container._countdown;
+    if (countdown) clearInterval(countdown);
+    
+    // Remove input
+    container.remove();
+    console.log('Cleaned up typing input container');
+  } else {
+    console.log('Typing input container already removed (timer expired)');
+  }
   
   if (!currentState || !roomId || currentState.turn !== myId || !selectedSpell) {
-    console.log('Invalid spell cast attempt');
+    console.log('Invalid spell cast attempt - missing required data:');
+    console.log('  currentState:', !!currentState);
+    console.log('  roomId:', !!roomId);
+    console.log('  turn check:', currentState?.turn === myId);
+    console.log('  selectedSpell:', !!selectedSpell);
     return;
   }
   
@@ -447,8 +487,14 @@ function submitTypedSpell(typedName) {
     shield: 0
   };
   
+  console.log('Attempting to cast spell with:');
+  console.log('  mockPlayer:', mockPlayer);
+  console.log('  selectedSpell:', selectedSpell);
+  console.log('  typedName:', typedName);
+  
   // Use gamelogic function to validate spell cast
   const castResult = attemptCastSpell(mockPlayer, selectedSpell, typedName);
+  console.log('Cast result:', castResult);
   
   if (castResult.success) {
     console.log('Spell cast successfully!', selectedSpell.name);
@@ -485,6 +531,41 @@ function submitTypedSpell(typedName) {
   // Clear selected spell and update queue regardless of result
   selectedSpell = null;
   updateSpellQueue();
+  
+  // Don't end turn - player can continue casting more spells
+  console.log('Spell cast complete. You can cast another spell or click "End Turn".');
+}
+
+// Show mana regeneration message for 1 second
+function showManaRegenMessage(manaGained) {
+  console.log('showManaRegenMessage called with:', manaGained);
+  
+  const messageEl = document.getElementById('mana-regen-message');
+  console.log('Message element found:', !!messageEl);
+  
+  if (!messageEl) {
+    console.error('Mana regen message element not found!');
+    return;
+  }
+  
+  messageEl.textContent = `+${manaGained} Mana Regenerated!`;
+  
+  // Reset animation by removing and re-adding the animation style
+  messageEl.style.animation = 'none';
+  messageEl.style.display = 'block';
+  
+  // Force reflow and then add animation
+  messageEl.offsetHeight; 
+  messageEl.style.animation = 'manaRegenPulse 1s ease-in-out';
+  
+  console.log('Mana regen message displayed with animation');
+  
+  // Hide after 1 second
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+    messageEl.style.animation = 'none';
+    console.log('Mana regen message hidden');
+  }, 1000);
 }
 
 }); // End DOMContentLoaded
