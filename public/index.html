@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,6 +33,7 @@
         <!-- Game Container (hidden initially) -->
         <div id="game-container" style="display: none;">
             <div id="turn-indicator">Current Turn: <strong id="current-player">Player 1</strong></div>
+            <div id="you-are" style="display:none; font-weight:600; margin-top:6px;"></div>
 
             <!-- overlay for center avatar -->
             <div id="turn-overlay" aria-hidden="true" style="display:none;">
@@ -41,6 +43,7 @@
             <div id="players">
                 <div class="player" id="player-1">
                     <h3>Player 1</h3>
+                    <img class="avatar" id="player-1-avatar" src="" alt="Player 1 avatar" />
                     <p>HP: <span class="hp">100</span></p>
                     <p>Mana: <span class="mana">50</span></p>
                     <div class="actions">
@@ -51,6 +54,7 @@
 
                 <div class="player" id="player-2">
                     <h3>Player 2</h3>
+                    <img class="avatar" id="player-2-avatar" src="" alt="Player 2 avatar" />
                     <p>HP: <span class="hp">100</span></p>
                     <p>Mana: <span class="mana">50</span></p>
                     <div class="actions">
@@ -73,8 +77,9 @@
         </div>
     </main>
 
-    <script src="/socket.io/socket.io.js"></script>
+    
 
+    <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="wordwizards.js"></script>
     <script type="module" src="wwfoodspell.js"></script>
     <script type="module" src="wwclasses.js"></script>
@@ -82,9 +87,13 @@
     <h1>Word Wizards</h1>
     <p>If you see this, the site is running ✅</p>
 
+
     <p>Status: <span id="status">Connecting...</span></p>
     <ul id="messages"></ul>
 
     <script src="game.js"></script>
+    <footer>
+        <p>&copy; 2025 Word Wizards. All rights reserved.</p>
+    </footer>
 </body>
 </html>
