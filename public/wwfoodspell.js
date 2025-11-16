@@ -30,7 +30,7 @@ const foodSpells = {
   "Ghost pepper blast": new Spell("Ghost pepper blast", getRandomInt(5, 8), HIGH, MANA_HIGH, "attack"),
   "Vanilla vibe check": new Spell("Vanilla vibe check", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal"),       
   "Gravy fueled recovery": new Spell("Gravy fueled recovery", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal"),    
-  "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal") 
+  "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal")
 };
 
 export { foodSpells };
