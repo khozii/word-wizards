@@ -38,7 +38,9 @@ function createInitialState(p1Id, p2Id) {
     // Fixed player order so both clients render consistent Player 1 / Player 2
     playerOrder: [p1Id, p2Id],
     turn: p1Id,   // whose turn it is (socket.id)
-    lastAction: null
+    lastAction: null,
+    gameOver: false,
+    winner: null
   };
 }
 
@@ -148,6 +150,10 @@ function processCounterPhase(roomId, counterAttempt, spellData) {
   io.to(roomId).emit("counter-phase-end", endResult);
   
   // Send updated game state
+  // If game over, emit dedicated event then final state; else normal state-update
+  if (state.gameOver) {
+    io.to(roomId).emit('game-over', { roomId, winnerId: state.winner, state });
+  }
   io.to(roomId).emit("state-update", state);
 }
 
@@ -182,6 +188,12 @@ io.on("connection", (socket) => {
 
     if (!currentPlayer || !opponent) {
       console.log(`Player data not found`);
+      return;
+    }
+
+    // Prevent further actions after game over
+    if (state.gameOver) {
+      console.log(`Ignoring action after game over in room ${roomId}`);
       return;
     }
 
