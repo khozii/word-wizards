@@ -163,20 +163,20 @@ function processCounterSpell(defender, spell, counterAttempt) {
     // Calculate counter damage reduction
     const correctCounterChars = counterSpellEffectivness(spell.name, counterAttempt);
     const damageReductionPercent = (correctCounterChars / spell.name.length) * 100;
-    const finalDamage = spell.damage * (1 - (damageReductionPercent / 100));
+    const finalDamage = Math.round((spell.damage * (1 - (damageReductionPercent / 100))) * 10) / 10;
     
     // Apply damage to shield first, then overflow to health
     const shieldBefore = defender.shield;
     let damageToHealth = 0;
     if (finalDamage > defender.shield) {
-        damageToHealth = finalDamage - defender.shield;
+        damageToHealth = Math.round((finalDamage - defender.shield) * 10) / 10;
         defender.shield = 0;
     } else {
         defender.shield -= finalDamage;
     }
     defender.health -= damageToHealth;
     
-    const damageToShield = Math.min(finalDamage, shieldBefore);
+    const damageToShield = Math.round(Math.min(finalDamage, shieldBefore) * 10) / 10;
     
     return {
         correctChars: correctCounterChars,
