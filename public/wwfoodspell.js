@@ -16,7 +16,6 @@ const foodSpells = {
   "Nacho nuke": new Spell("Nacho nuke", getRandomInt(5, 8), LOW, MANA_LOW, "attack"),
   "Sugarshock": new Spell("Sugarshock", getRandomInt(5, 8), LOW, MANA_LOW, "attack"),
   "Spicebomb": new Spell("Spicebomb", getRandomInt(5, 8), LOW, MANA_LOW, "attack"),
-
   "Frosting fix": new Spell("Frosting fix", getRandomInt(5, 8), LOW, MANA_LOW, "heal"),
   "Gumdrop glow": new Spell("Gumdrop glow", getRandomInt(5, 8), LOW, MANA_LOW, "heal"),
   "Wasabi whiplash": new Spell("Wasabi whiplash", getRandomInt(5, 8), MEDIUM, MANA_MEDIUM, "attack"),
@@ -31,7 +30,7 @@ const foodSpells = {
   "Ghost pepper blast": new Spell("Ghost pepper blast", getRandomInt(5, 8), HIGH, MANA_HIGH, "attack"),
   "Vanilla vibe check": new Spell("Vanilla vibe check", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal"),       
   "Gravy fueled recovery": new Spell("Gravy fueled recovery", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal"),    
-  "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal")        
+  "Avocado aura boost": new Spell("Avocado aura boost", getRandomInt(5, 8), HIGH, MANA_HIGH, "heal") 
 };
 
 export { foodSpells };
